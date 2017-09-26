@@ -34,9 +34,7 @@ int bmp085_init(void)
     bmp085_calibration();
     } else {
     baro_state = 0;
-    //Serial.println("BMP085 NOT FOUND");
     }
-    
 }
 
 void bmp085_calibration()

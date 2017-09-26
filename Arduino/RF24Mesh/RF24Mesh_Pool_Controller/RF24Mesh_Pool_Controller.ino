@@ -51,9 +51,6 @@
 #define RELAY_ON LOW  
 #define RELAY_OFF HIGH
 
-//#define SERIAL_DEBUG
-#define MESH_NOMASTER
-
 int relay1_state = 0;
 int relay2_state = 0;
 int baro_state = 0;
@@ -69,10 +66,6 @@ int solar_temp = 0;
 
 int voltage = 0;
 int current = 0;
-int dc_volt = 0;
-int dc_voltage = 0;
-int dc_current = 0;
-int dc_watts = 0;
 
 int ac_volt = 0;
 int ac_voltage = 0;
@@ -80,8 +73,6 @@ int ac_current = 0;
 int ac_watts = 0;
 int ac_watts_offset = 50;
 
-float kilowatt_hour;
-float energy_cost;
 float realPower;       
 float apparentPower;   
 float powerFActor;     
@@ -106,14 +97,10 @@ long timer2 = 0;
 long interval = 1000;
 long fast_interval = 100;
 long slow_interval = 5000;
-long hours = 0;
-long minutes = 0;
-long seconds = 0;
 
 // Hardware ID and Node ID
 char hardware_id[7] = "POOLIO";
 int node_id = 99;
-//byte addresses[][6] = {"1Node","2Node"};
 
 // Serial IO
 char packet_one[32] = "";
@@ -123,13 +110,6 @@ char data[32] = "";
 
 String input_string = "";
 boolean string_complete = false;
-boolean relaystatus = false;
-uint32_t displayTimer = 0;
-
-//struct payload_t {
-//  unsigned long ms;
-//  unsigned long counter;
-//};
 
 int debug = 0;
 
@@ -193,10 +173,7 @@ void setup() {
     
     // Start DHT22 temperature and humidity sensor
     dht.begin();
-    
-    // Print variables header info to usb serial port
-   // Serial.println("ND  PT  AT  ST  H  PR  V  C  W  R1  R2");
-    
+       
 }
 
 void loop() {
@@ -213,15 +190,7 @@ void loop() {
     ac_voltage = supplyVoltage; // integer
     ac_current = Irms;          // integer
     ac_watts   = (supplyVoltage * Irms) - ac_watts_offset; // integer
-    //kilowatt_hour = (ac_watts * seconds) / (1000 / 3600);
-    //energy_cost   = kilowatt_hour * 0.887;
     
-    // energy = (ac_watts * seconds) / (1000*3600);
-    
-    //float calc_dcvolt    = analogRead(DC_VOLT_PIN)    * 0.00488;
-    //float calc_dccurrent = analogRead(DC_CURRENT_PIN) * 0.00488;
-    //dc_volt    = calc_dcvolt     * 16;
-    //dc_current = calc_dccurrent  * 2;
     currentMillis = millis();    
     if(currentMillis - timer1 >= fast_interval) {   
         sensors.requestTemperatures(); // Send the command to get temperature readings
@@ -251,11 +220,13 @@ void loop() {
     
     air_pressure = pressure * 0.01;
     board_temp   = temperature;
-    float atm = pressure / 101325; // "standard atmosphere"
-    float altitude = calcAltitude(pressure); //Uncompensated caculation - in Meters 
+    float atm = pressure / 101325; 
+    float altitude = calcAltitude(pressure);
     
-    
-        
+    if (blinkm_state == 1) {
+        blinkm_setrgb(BLINKM_ADDRESS, (ac_watts / 17), (ac_voltage), (debug * 255));
+        }       
+                
     currentMillis = millis();    
     if(currentMillis - previousMillis >= slow_interval) {    
       
@@ -273,9 +244,7 @@ void loop() {
             Serial.print(packet_one);        
             Serial.print(packet_two);
         }
-        if (blinkm_state == 1) {
-        blinkm_setrgb(BLINKM_ADDRESS, (ac_watts / 17), (ac_voltage), (debug * 255));
-        }            
+             
         previousMillis = millis();   
         
     }

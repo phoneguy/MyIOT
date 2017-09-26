@@ -14,15 +14,14 @@
 #include <EEPROM.h>
 
 /***** Configure the chosen CE,CS pins *****/
-RF24 radio(53,48);
+RF24 radio(53,48); // Mega 2560
 RF24Network network(radio);
 RF24Mesh mesh(radio,network);
 
-uint32_t displayTimer = 0;
+uint32_t timer = 0;
 uint8_t debug = 0;
 boolean string_complete = false;
 String input_string = "";
-uint8_t nodeID;
 char packet_one[32] = "";
  
 void setup() {
@@ -55,48 +54,47 @@ void loop() {
         RF24NetworkHeader header;
         network.peek(header);
     
-    uint32_t dat=0;
-    char data[32]="";
+        uint32_t dat = 0;
+        char data[32] = "";
     
-    switch(header.type){
-        // Display the incoming millis() values from the sensor nodes
-        case 'M':
-        network.read(header,&dat,sizeof(dat));
-        Serial.println(dat);
-        break;
+        switch(header.type){
+            case 'M':
+            network.read(header,&dat,sizeof(dat));
+            Serial.println(dat);
+            break;
       
-        case 'S':
-        network.read(header, &data, sizeof(data));
-        Serial.print(data);
-        break;
+            case 'S':
+            network.read(header, &data, sizeof(data));
+            Serial.print(data);
+            break;
       
-        default:
-        network.read(header,0,0);
-        Serial.println(header.type);
-        break;
+            default:
+            network.read(header,0,0);
+            Serial.println(header.type);
+            break;
+        }
+    
+        serial_event();
     }
-    delay(1);
-    serial_event();
-  }
     
-  if (debug == 1) {
-      if(millis() - displayTimer > 10000){
-    displayTimer = millis();
-    Serial.println(" ");
-    Serial.println(F("********Assigned Addresses********"));
-     for(int i=0; i<mesh.addrListTop; i++){
-         Serial.print("NodeID: ");
-         Serial.print(mesh.addrList[i].nodeID);
-         Serial.print(" RF24Network Address: 0");
-         Serial.println(mesh.addrList[i].address,OCT);
-       }
-       Serial.println(F("**********************************"));
-      }
-  }  
-  
+    if (debug == 1) {
+        if(millis() - timer > 30000){
+        timer = millis();
+        Serial.println(" ");
+        Serial.println(F("********Assigned Addresses********"));
+        for(int i=0; i<mesh.addrListTop; i++){
+        Serial.print("NodeID: ");
+        Serial.print(mesh.addrList[i].nodeID);
+        Serial.print(" RF24Network Address: 0");
+        Serial.println(mesh.addrList[i].address,OCT);
+        }
+        Serial.println(F("**********************************"));
+        }
+    }  
+
 }
 
-
+// Read from serial port and send node id and command
 static void serial_event() {
 
    while (Serial.available()) {
@@ -114,56 +112,17 @@ static void serial_event() {
         tmp = input_string.toInt();
         rx_nodeid = tmp / 100;
         rx_command = tmp - (rx_nodeid * 100);
+        
         if (rx_nodeid > 0) {
             mesh.write(&rx_command, 'M', sizeof(rx_command), rx_nodeid);
-        }
-        if (debug == 1) {
-          Serial.print("Node ID: "); Serial.print(rx_nodeid); Serial.print(" Command: "); Serial.println(rx_command);
-        }
-   /* if(input_string == "99 10") {
-        if (debug == 1) {
-            Serial.print("R1 OFF\n"); // Print to USB port
+            if (debug == 1 ) {
+            Serial.print("Node ID: "); Serial.print(rx_nodeid); Serial.print(" Command: "); Serial.println(rx_command);
             }
-        int tmp = 910;
-        mesh.write(&tmp, 'M', sizeof(tmp),99);
-        
         }
-    else if (input_string == "99 11") {
-        if (debug == 1) {
-            Serial.print("R1 ON\n");
-            }
-        int tmp = 911;
-        mesh.write(&tmp, 'M', sizeof(tmp),99);
         
-        }
-    else if (input_string == "99 20") {
-        //Serial.print("R2 OFF\n");
-        int tmp = 920;
-        mesh.write(&tmp, 'M', sizeof(tmp),99);
-        
-        }
-    else if (input_string == "99 21") {
-        //Serial.print("R2 ON\n");
-        int tmp = 921;
-        mesh.write(&tmp, 'M', sizeof(tmp),99);
-        
-        }
-    else if (input_string == "99 30") {
-        debug = 0;   
-        //Serial.print("DEBUG OFF\n");
-       int tmp = 930;
-        mesh.write(&tmp, 'M', sizeof(tmp),99);
-        
-        }
-    else if (input_string == "99 31") {
-        debug = 1;  
-        //Serial.print("DEBUG ON\n");
-        int tmp = 931;
-        mesh.write(&tmp, 'M', sizeof(tmp),99);
-        
-        } */   
     input_string = "";
     string_complete = false;
-    }
+
+}
 
 

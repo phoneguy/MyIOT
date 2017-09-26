@@ -19,7 +19,7 @@
 #define RF24_SCLK      13
 
 // Arduino NANO analog pins
-#define AC_VOLT_PIN    A0
+#define AC_VOLT_PIN    0
 #define AC_CT1_PIN     1
 #define AC_CT2_PIN     2
 
@@ -120,7 +120,8 @@ void loop() {
         mesh.write(&packet_one, 'S', sizeof(packet_one));
     previousMillis = currentMillis;
     }
-// Check for incoming data from the sensors
+    
+// Check for incoming data from other nodes
     if(network.available()){
         RF24NetworkHeader header;
         network.peek(header);
@@ -129,7 +130,6 @@ void loop() {
     char data[32]="";
     
     switch(header.type){
-        // Display the incoming millis() values from the sensor nodes
         case 'M':
         network.read(header,&dat,sizeof(dat));
         if (debug == 1) {

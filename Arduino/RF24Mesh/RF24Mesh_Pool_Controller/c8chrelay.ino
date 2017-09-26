@@ -9,9 +9,3 @@
 
 
 
-void update_relays()
-{
-    digitalWrite(RELAY1_PIN, relay1_state);
-    digitalWrite(RELAY2_PIN, relay2_state);
-}
-
