@@ -106,9 +106,9 @@ static void serial_event() {
         }
     }  
         // 2 digit node id and 2 digit command
-        int rx_nodeid = 0;
-        int tmp = 0;
-        int rx_command = 0;
+        uint8_t rx_nodeid = 0;
+        uint16_t tmp = 0;
+        uint16_t rx_command = 0;
         tmp = input_string.toInt();
         rx_nodeid = tmp / 100;
         rx_command = tmp - (rx_nodeid * 100);

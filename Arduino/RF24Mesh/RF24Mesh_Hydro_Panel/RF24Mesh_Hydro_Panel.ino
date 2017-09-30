@@ -12,6 +12,8 @@
 #include <SPI.h>
 
 // Arduino NANO digital pins
+#define TX_MESH_LED    2
+#define RX_MESH_LED    3
 #define RF24_CE        9
 #define RF24_CSN       10
 #define RF24_MISO      12
@@ -23,16 +25,16 @@
 #define AC_CT1_PIN     1
 #define AC_CT2_PIN     2
 
-int ac_volt = 0;
-int ac_voltage = 0;
-int ac_current = 0;
-int ac_watts = 0;
-int ac_watts_offset = 0;
+uint8_t ac_volt = 0;
+uint8_t ac_voltage = 0;
+uint8_t ac_current = 0;
+uint16_t ac_watts = 0;
+uint8_t ac_watts_offset = 0;
 
-int ac_amps1 = 0;
-int ac_amps2 = 0;
-int ac_watts1 = 0;
-int ac_watts2 = 0;
+uint8_t ac_amps1 = 0;
+uint8_t ac_amps2 = 0;
+uint16_t ac_watts1 = 0;
+uint16_t ac_watts2 = 0;
 
 unsigned long currentMillis = 0;
 long previousMillis = 0;
@@ -47,7 +49,7 @@ long seconds = 0;
 
 // Hardware ID and Node ID
 char hardware_id[7] = "HYDROIO";
-int node_id = 98;
+uint8_t node_id = 98;
 
 // Serial IO
 char packet_one[32] = "";
@@ -56,7 +58,7 @@ char id[32];
 String input_string = "";
 boolean string_complete = false;
 
-int debug = 0;
+uint8_t debug = 0;
 
 RF24 radio(RF24_CE, RF24_CSN);
 RF24Network network(radio);
@@ -90,13 +92,16 @@ void setup() {
 }
 
 void loop() {
+
+    digitalWrite(TX_MESH_LED, LOW);
+    digitalWrite(RX_MESH_LED, LOW);
     
     mesh.update();
       
     double irms1 = ct1.calcIrms(1480);
     double irms2 = ct2.calcIrms(1480);
     
-    int ac_voltage = 120;
+    uint8_t ac_voltage = 120;
     
     ac_amps1 = irms1;
     ac_amps2 = irms2;
@@ -107,12 +112,13 @@ void loop() {
     ac_watts1 = ac_kw1;
     ac_watts2 = ac_kw2;
     
-    int total_amps =2*( irms1 + irms2);
-    int total_watts = 120 * (2*irms1) + 120 * (2*irms2); //( 2 * ac_voltage * irms1 + ac_voltage * irms2 ) - ac_watts_offset;
+    uint8_t total_amps =2*( irms1 + irms2);
+    uint16_t total_watts = 120 * (2*irms1) + 120 * (2*irms2); //( 2 * ac_voltage * irms1 + ac_voltage * irms2 ) - ac_watts_offset;
       
     currentMillis = millis();    
     if(currentMillis - previousMillis >= slow_interval) {
-     
+        digitalWrite(TX_MESH_LED, HIGH);
+        //                                   97s      999999s       999\n
         sprintf(packet_one, "%u %i %i \n", node_id, total_watts, total_amps);
         if (debug == 1) {
         Serial.println(packet_one); 
@@ -126,20 +132,21 @@ void loop() {
         RF24NetworkHeader header;
         network.peek(header);
     
-    uint32_t dat=0;
-    char data[32]="";
+    uint32_t dat = 0;
+    char data[32] = "";
     
     switch(header.type){
         case 'M':
+        digitalWrite(RX_MESH_LED, HIGH);
         network.read(header,&dat,sizeof(dat));
         if (debug == 1) {
         Serial.println(dat);
         }
-        if (dat == 930) {
+        if (dat == 30) {
             debug = 0;   
            // blinkm_setrgb(BLINKM_ADDRESS, 0,0,0);
             }
-        else if (dat == 931) {
+        else if (dat == 31) {
             debug = 1;  
           //  blinkm_setrgb(BLINKM_ADDRESS, 255,255,0);
             }   

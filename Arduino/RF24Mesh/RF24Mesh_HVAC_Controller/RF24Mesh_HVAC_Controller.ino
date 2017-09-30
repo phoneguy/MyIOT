@@ -1,14 +1,14 @@
 
 /*
-        PoolController.ino by stevenharsanyi@gmail.com
-        rev 1.0 June 11, 2017 
+        HVAC Controller by stevenharsanyi@gmail.com
+        rev 1.0 September 25, 2017 
 */
 #include "RF24Network.h"
 #include "RF24.h"
 #include "RF24Mesh.h"
 
 #include <SoftwareSerial.h>
-#include <EmonLib.h>
+//#include <EmonLib.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <OneWire.h> 
@@ -36,11 +36,7 @@
 #define RF24_MISO      12
 #define RF24_SCLK      13
 
-// Arduino NANO analog pins
-#define DC_VOLT_PIN    A0
-#define DC_CURRENT_PIN A1
-#define AC_VOLT_PIN    A2
-#define AC_CURRENT_PIN A3
+// Arduino NANO analog p
 #define I2C_SDA_PIN    A4
 #define I2C_SCL_PIN    A5
 #define LED_1_PIN      A6 
@@ -57,38 +53,21 @@ uint8_t baro_state = 0;
 uint8_t compass_state = 0;
 uint8_t blinkm_state = 0;
 
-int pool_temp = 0;
+int air_return = 0;
 int air_temp = 0;
 int case_temp = 0;
 int board_temp = 0;
 int motor_temp = 0;
-int solar_temp = 0;
+int air_supply = 0;
+int air_inside = 0;
+uint16_t humidity_inside = 0;
+uint16_t pressure_inside = 0;
 
-uint8_t voltage = 0;
-uint8_t current = 0;
-
-uint8_t ac_volt = 0;
-uint8_t ac_voltage = 0;
-uint8_t ac_current = 0;
-uint8_t ac_watts = 0;
-uint16_t ac_watts_offset = 50;
-
-float realPower;       
-float apparentPower;   
-float powerFActor;     
-float supplyVoltage;  
-float Irms;            
-   
 float temperature = 0;
 int altitude = 0;
-uint8_t humidity = 0;
+uint16_t humidity = 0;
 uint16_t air_pressure = 0;
 float pressure = 0;
-
-int x = 0;
-int y = 0;
-int z = 0;
-int mag_z = 0;
 
 unsigned long currentMillis = 0;
 long previousMillis = 0;
@@ -99,8 +78,8 @@ long fast_interval = 100;
 long slow_interval = 5000;
 
 // Hardware ID and Node ID
-char hardware_id[7] = "POOLIO";
-uint8_t node_id = 99;
+char hardware_id[7] = "HVACIO";
+uint8_t node_id = 91;
 
 // Serial IO
 char packet_one[32] = "";
@@ -117,7 +96,6 @@ RF24 radio(9,10);
 RF24Network network(radio);
 RF24Mesh mesh(radio, network);
 
-EnergyMonitor emon1;                   // Create an instance
 
 // Setup a oneWire instance to communicate with any OneWire devices  
 // (not just Maxim/Dallas temperature ICs) 
@@ -136,11 +114,7 @@ void setup() {
     pinMode(RELAY2_PIN,      OUTPUT);
     digitalWrite(RELAY1_PIN, HIGH);
     digitalWrite(RELAY2_PIN, HIGH);
-    
-    // Setup OpenEnergyMonitor sensors
-    emon1.voltage(AC_VOLT_PIN, 56.13, 1.7); // Voltage: input pin, calibration, phase_shift
-    emon1.current(AC_CURRENT_PIN, 228.22);  // Current: input pin, calibration. 
-
+   
     // Start usb serial connections
     Serial.begin(9600);
    
@@ -161,10 +135,7 @@ void setup() {
  
     // Start barometer
     bmp085_init();
-    
-    // Start compass
-    //hmc5883_init();
-    
+        
     // Start BlinkM
     blinkm_init();
             
@@ -179,31 +150,18 @@ void setup() {
 void loop() {
 
     mesh.update();
-
-    emon1.calcVI(20,2000);                       // Calculate all. No.of half wavelengths (crossings), time-out
-    realPower       = emon1.realPower;     // extract Real Power into variable
-    apparentPower   = emon1.apparentPower; // extract Apparent Power into variable
-    powerFActor     = emon1.powerFactor;   // extract Power Factor into Variable
-    supplyVoltage   = emon1.Vrms;          // extract Vrms into Variable
-    Irms            = emon1.Irms;          // extract Irms into Variable
-    
-    ac_voltage = supplyVoltage; // integer
-    ac_current = Irms;          // integer
-    ac_watts   = (supplyVoltage * Irms) - ac_watts_offset; // integer
     
     currentMillis = millis();    
     if(currentMillis - timer1 >= fast_interval) {   
         sensors.requestTemperatures(); // Send the command to get temperature readings
-        pool_temp  = ((sensors.getTempCByIndex(0)) * 1.8 + 32);
-        air_temp   = ((sensors.getTempCByIndex(1)) * 1.8 + 32);
-        solar_temp = ((sensors.getTempCByIndex(2)) * 1.8 + 32);
+        air_return  = ((sensors.getTempCByIndex(0)) * 1.8 + 32);
+        air_supply  = ((sensors.getTempCByIndex(1)) * 1.8 + 32);
+        air_inside  = ((sensors.getTempCByIndex(2)) * 1.8 + 32);
    
         dht.readHumidity();
         dht.readTemperature();
         
         timer1 = millis();
-     
-        //read_compass();   
     }
     
     humidity  = dht.humidity;
@@ -224,7 +182,7 @@ void loop() {
     float altitude = calcAltitude(pressure);
     
     if (blinkm_state == 1) {
-        blinkm_setrgb(BLINKM_ADDRESS, (ac_watts / 17), (ac_voltage), (debug * 255));
+//        blinkm_setrgb(BLINKM_ADDRESS, (ac_watts / 17), (ac_voltage), (debug * 255));
         }       
                 
     currentMillis = millis();    
@@ -235,8 +193,8 @@ void loop() {
             }
         // packet size is 32 bytes, split 40 bytes              1            2          3          4          5           6            7         8           9            10           11  
         // Print to hardware and software serial ports         SSS           SNNS      SNNS       SNNS       NNNS        NNNNS       NNNS        NNS       NNNNS          NS           NS
-        sprintf(packet_one, "%u %i %i %i %u %u ", node_id, pool_temp, air_temp, solar_temp, humidity, air_pressure); 
-        sprintf(packet_two, "%u %u %u %u %u \n", ac_voltage, ac_current, ac_watts, relay1_state, relay2_state);
+        sprintf(packet_one, "%u %i %i %i %u %u ", node_id, air_return, air_supply, air_temp, humidity, air_pressure); 
+        sprintf(packet_two, "%u %u %u %u %u \n", air_inside, humidity_inside, pressure_inside, relay1_state, relay2_state);
         mesh.write(&packet_one, 'S', sizeof(packet_one));
         mesh.write(&packet_two, 'S', sizeof(packet_two));
       
