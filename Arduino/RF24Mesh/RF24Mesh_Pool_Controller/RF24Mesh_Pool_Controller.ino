@@ -37,14 +37,10 @@
 #define RF24_SCLK      13
 
 // Arduino NANO analog pins
-#define DC_VOLT_PIN    A0
-#define DC_CURRENT_PIN A1
 #define AC_VOLT_PIN    A2
 #define AC_CURRENT_PIN A3
 #define I2C_SDA_PIN    A4
 #define I2C_SCL_PIN    A5
-#define LED_1_PIN      A6 
-#define LED_2_PIN      A7
 
 // Number of relay channels in use
 #define RELAY_CHANNELS 2
@@ -60,34 +56,30 @@
 uint8_t compass_state = 0;
 uint8_t baro_state    = 0;
 uint8_t blinkm_state  = 0;
-uint8_t max_relays = RELAY_CHANNELS * 10 + 1; // control msg is relay and state ie: relay 1 state 0 is 10
-uint8_t min_relays = (RELAY_CHANNELS - (RELAY_CHANNELS - 1)) * 10;
-uint8_t relay1_state = 0;
-uint8_t relay2_state = 0;
-//              relay#, pin, state         
-int relays[3][3] = { {0, 0, 0},
-                     {1, 2, 0},
-                     {2, 3, 0} };
-                     
-uint8_t rx_command = 0;
-uint8_t rx_state = 0;
-uint8_t relay = 0;
-uint8_t relay_pin = 0;
 
-int pool_temp = 0;
-int air_temp = 0;
-int case_temp = 0;
+uint8_t max_relays    = (RELAY_CHANNELS * 10) + 1; // control msg is relay and state ie: relay 1 state 0 is 10
+uint8_t min_relays    = (RELAY_CHANNELS - (RELAY_CHANNELS - 1)) * 10;
+uint8_t relay1_state  = 0;
+uint8_t relay2_state  = 0;
+//              relay#, pin, state         
+uint8_t relays[3][3] = { {0, 0, 0},
+                         {1, 2, 0},
+                         {2, 3, 0} };
+uint8_t rx_command = 0;
+uint8_t rx_state   = 0;
+uint8_t relay      = 0;
+uint8_t relay_pin  = 0;
+
+int air_temp   = 0;
 int board_temp = 0;
-int motor_temp = 0;
+int case_temp  = 0;
+int pool_temp  = 0;
 int solar_temp = 0;
 
-uint8_t voltage = 0;
-uint8_t current = 0;
-
-uint8_t ac_volt = 0;
-uint8_t ac_voltage = 0;
-uint8_t ac_current = 0;
-uint8_t ac_watts = 0;
+uint8_t ac_current       = 0;
+uint16_t ac_volts        = 0;
+uint16_t ac_voltage      = 0;
+uint16_t ac_watts        = 0;
 uint16_t ac_watts_offset = 50;
 
 float realPower;       
@@ -96,25 +88,30 @@ float powerFActor;
 float supplyVoltage;  
 float Irms;            
    
-float temperature = 0;
-int altitude = 0;
-uint8_t humidity = 0;
+float temperature     = 0;
+uint8_t humidity      = 0;
 uint16_t air_pressure = 0;
-float pressure = 0;
+float pressure        = 0;
 
 int x = 0;
 int y = 0;
 int z = 0;
-int mag_z = 0;
 
+// Timers
 unsigned long currentMillis = 0;
-long previousMillis = 0;
-long timer1 = 0;
-long timer2 = 0;
-long interval = 1000;
-long fast_interval = 100;
-long slow_interval = 5000;
-
+long timer1  = 0;
+long timer2  = 0;
+long one_hz  = 1000;
+long ten_hz  = 100;
+long update_rate = 5000; //     command  seconds
+uint16_t update_table[7][2] = { {0,   5}, // default 5 seconds
+                                {82,  1},
+                                {82,  2},
+                                {83,  5},
+                                {84, 10},
+                                {85, 30},
+                                {86, 60} };
+                                
 // Hardware ID and Node ID
 char hardware_id[7] = "POOLIO";
 uint8_t node_id = 99;
@@ -209,7 +206,7 @@ void loop() {
     ac_watts   = (supplyVoltage * Irms) - ac_watts_offset; // integer
     
     currentMillis = millis();    
-    if(currentMillis - timer1 >= fast_interval) {   
+    if(currentMillis - timer1 >= one_hz) {   
         sensors.requestTemperatures(); // Send the command to get temperature readings
         pool_temp  = ((sensors.getTempCByIndex(0)) * 1.8 + 32);
         air_temp   = ((sensors.getTempCByIndex(1)) * 1.8 + 32);
@@ -217,37 +214,30 @@ void loop() {
                
         dht.readHumidity();
         dht.readTemperature();
-        
-        timer1 = millis();
+        humidity  = dht.humidity;
+        case_temp = dht.temperature_F;
 
+        if (baro == 1 && baro_state == 1) {
+        temperature  = bmp085GetTemperature(bmp085ReadUT()); //MUST be called first
+        pressure     = bmp085GetPressure(bmp085ReadUP());
+        }
+        air_pressure = pressure * 0.01;
+        board_temp   = temperature;
+    
         if (compass == 1 && compass_state == 1) {
         read_compass();  
         } 
+
+        timer1 = millis();
+
     }
-    
-    humidity  = dht.humidity;
-    case_temp = dht.temperature_F;
-        
-    if (baro == 1 && baro_state == 1) {
-       currentMillis = millis();    
-       if(currentMillis - timer2 >= interval) {
-        temperature  = bmp085GetTemperature(bmp085ReadUT()); //MUST be called first
-        pressure     = bmp085GetPressure(bmp085ReadUP());
-       }
-        timer2 = millis();   
-    }
-    
-    air_pressure = pressure * 0.01;
-    board_temp   = temperature;
-    float atm = pressure / 101325; 
-    float altitude = calcAltitude(pressure);
-    
+   
     if (blinkm == 1 && blinkm_state == 1) {
         blinkm_setrgb(BLINKM_ADDRESS, (ac_watts / 17), (ac_voltage), (debug * 255));
-        }       
+    }       
                 
     currentMillis = millis();    
-    if(currentMillis - previousMillis >= slow_interval) {    
+    if(currentMillis - timer2 >= update_rate) {    
       
         if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 255, 0);
@@ -277,7 +267,7 @@ void loop() {
                 }
         }
              
-        previousMillis = millis();   
+        timer2 = millis();   
         
     }
       

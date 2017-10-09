@@ -47,7 +47,10 @@ static void node_command() {
             else if (rx_state == 1) {
                 digitalWrite(relay_pin, RELAY_ON);
             }
-        } 
+        }
+        else if (dat >= 82 && dat <= 86) {
+            update_rate = update_table[dat][1] * 1000;   
+            }
         else if (dat == 90) {
             debug = 0;   
             }
