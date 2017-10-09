@@ -19,23 +19,22 @@ static void node_command() {
     switch(header.type){
         // Display the incoming millis() values from the sensor nodes
         case 'M':
-        if (blinkm_state == 1) {
+        if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 255, 0, 0);
             }
         network.read(header,&dat,sizeof(dat));
         if (debug == 1) {
-           // mesh.write(&dat, 'M', sizeof(dat));
+            // mesh.write(&dat, 'M', sizeof(dat));
             Serial.println(dat);
         }
-
-        if ( dat > 9 && dat < 82 ) {
+        if (dat >= min_relays && dat <= max_relays) {
             rx_command = dat;
             relay = rx_command / 10;
             relay_pin = relays[relay][1];
             rx_state = (rx_command - (relay * 10));
             state = relays[relay][2];
 
-            if (rx_state > 1 ) {
+            if (rx_state > 1) {
                 rx_state = state;
             }
             else {
@@ -48,31 +47,7 @@ static void node_command() {
             else if (rx_state == 1) {
                 digitalWrite(relay_pin, RELAY_ON);
             }
-                      
-            
-        }
-       /* else if(dat == 10) {
-            digitalWrite(RELAY1_PIN, RELAY_OFF);
-            relay1_state = 0;
-            relays[1][2] = 0;
-            }
-        else if (dat == 11) {
-            digitalWrite(RELAY1_PIN, RELAY_ON);
-            relay1_state = 1;
-            relays[1][2] = 1;
-            }
-        else if (dat == 20) {
-            digitalWrite(RELAY2_PIN, RELAY_OFF);
-            relay2_state = 0;
-            relays[2][2] = 0;
-
-            }
-        else if (dat == 21) {
-            digitalWrite(RELAY2_PIN, RELAY_ON);
-            relay2_state = 1;
-            relays[2][2] = 1;
-
-            }*/
+        } 
         else if (dat == 90) {
             debug = 0;   
             }
@@ -82,7 +57,7 @@ static void node_command() {
         break;
       
         case 'S':
-        if (blinkm_state == 1) {
+        if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 255, 255, 0);
             }
         network.read(header, &data, sizeof(data));
@@ -91,7 +66,7 @@ static void node_command() {
         break;
       
         default:
-        if (blinkm_state == 1) {
+        if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 0, 255);
             }
         network.read(header,0,0);
@@ -117,6 +92,7 @@ static void scan_i2cbus() {
                 Serial.print(i, HEX);
                 Serial.print(", ");
                 if (i == BLINKM_ADDRESS) {
+                  blinkm_state = 1;
                     Serial.print("blinkm");
                     }
                 Serial.println(""); 
@@ -126,6 +102,7 @@ static void scan_i2cbus() {
             Serial.print(i, HEX);
             Serial.print(", ");
                 if (i == HMC5883_ADDRESS) {
+                    compass_state = 1;
                     Serial.print("hmc4883");
                     }
                 else if (i == BMA180_ADDRESS) {
@@ -135,6 +112,7 @@ static void scan_i2cbus() {
                     Serial.print("itg3200");
                     }
                 else if (i == BMP085_ADDRESS) {
+                  baro_state = 1;
                     Serial.print("bmp085");
                     }
                 else if (i == MPU6050_ADDRESS) {

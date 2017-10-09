@@ -48,29 +48,31 @@
 
 // Number of relay channels in use
 #define RELAY_CHANNELS 2
-//#define LOW 1
-//#define HIGH 0
 #define RELAY_ON LOW  
 #define RELAY_OFF HIGH
 
+// Enable or disable devices
+#define compass 0
+#define baro    1
+#define blinkm  1
+
+// Variables
+uint8_t compass_state = 0;
+uint8_t baro_state    = 0;
+uint8_t blinkm_state  = 0;
+uint8_t max_relays = RELAY_CHANNELS * 10 + 1; // control msg is relay and state ie: relay 1 state 0 is 10
+uint8_t min_relays = (RELAY_CHANNELS - (RELAY_CHANNELS - 1)) * 10;
 uint8_t relay1_state = 0;
 uint8_t relay2_state = 0;
-uint8_t state = 0;
-uint16_t tmp = 0;
-//                relay#, pin, state         
+//              relay#, pin, state         
 int relays[3][3] = { {0, 0, 0},
                      {1, 2, 0},
                      {2, 3, 0} };
                      
 uint8_t rx_command = 0;
-//int tmp = 0;
 uint8_t rx_state = 0;
 uint8_t relay = 0;
 uint8_t relay_pin = 0;
-
-uint8_t baro_state = 0;
-uint8_t compass_state = 0;
-uint8_t blinkm_state = 0;
 
 int pool_temp = 0;
 int air_temp = 0;
@@ -132,7 +134,7 @@ RF24 radio(9,10);
 RF24Network network(radio);
 RF24Mesh mesh(radio, network);
 
-EnergyMonitor emon1;                   // Create an instance
+EnergyMonitor emon1;
 
 // Setup a oneWire instance to communicate with any OneWire devices  
 // (not just Maxim/Dallas temperature ICs) 
@@ -178,7 +180,7 @@ void setup() {
     bmp085_init();
     
     // Start compass
-    //hmc5883_init();
+    hmc5883_init();
     
     // Start BlinkM
     blinkm_init();
@@ -212,21 +214,21 @@ void loop() {
         pool_temp  = ((sensors.getTempCByIndex(0)) * 1.8 + 32);
         air_temp   = ((sensors.getTempCByIndex(1)) * 1.8 + 32);
         solar_temp = ((sensors.getTempCByIndex(2)) * 1.8 + 32);
-        
-      
-        
+               
         dht.readHumidity();
         dht.readTemperature();
         
         timer1 = millis();
-     
-        //read_compass();   
+
+        if (compass == 1 && compass_state == 1) {
+        read_compass();  
+        } 
     }
     
     humidity  = dht.humidity;
     case_temp = dht.temperature_F;
         
-    if (baro_state == 1) {
+    if (baro == 1 && baro_state == 1) {
        currentMillis = millis();    
        if(currentMillis - timer2 >= interval) {
         temperature  = bmp085GetTemperature(bmp085ReadUT()); //MUST be called first
@@ -240,14 +242,14 @@ void loop() {
     float atm = pressure / 101325; 
     float altitude = calcAltitude(pressure);
     
-    if (blinkm_state == 1) {
+    if (blinkm == 1 && blinkm_state == 1) {
         blinkm_setrgb(BLINKM_ADDRESS, (ac_watts / 17), (ac_voltage), (debug * 255));
         }       
                 
     currentMillis = millis();    
     if(currentMillis - previousMillis >= slow_interval) {    
       
-        if (blinkm_state == 1) {
+        if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 255, 0);
             }
         relay1_state = relays[1][2];
@@ -263,6 +265,16 @@ void loop() {
         if (debug == 1) {  
             Serial.print(packet_one);        
             Serial.print(packet_two);
+
+            if ( compass == 1 && compass_state == 1) {
+                // Print out compass values for each axis
+                Serial.print("x: ");
+                Serial.print(x);
+                Serial.print("  y: ");
+                Serial.print(y);
+                Serial.print("  z: ");
+                Serial.println(z);
+                }
         }
              
         previousMillis = millis();   
