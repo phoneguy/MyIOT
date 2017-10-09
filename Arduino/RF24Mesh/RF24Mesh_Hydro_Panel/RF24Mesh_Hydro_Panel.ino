@@ -7,7 +7,7 @@
 #include "RF24.h"
 #include "RF24Mesh.h"
 
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <EmonLib.h>
 #include <SPI.h>
 
@@ -25,28 +25,29 @@
 #define AC_CT1_PIN     1
 #define AC_CT2_PIN     2
 
-uint8_t ac_volt = 0;
-uint8_t ac_voltage = 0;
-uint8_t ac_current = 0;
-uint16_t ac_watts = 0;
-uint8_t ac_watts_offset = 0;
+int ac_volt         = 0;
+int ac_voltage      = 120;
+int ac_current      = 0;
+int ac_watts        = 0;
+int ac_watts_offset = 0;
 
-uint8_t ac_amps1 = 0;
-uint8_t ac_amps2 = 0;
+uint8_t ac_amps1   = 0;
+uint8_t ac_amps2   = 0;
 uint16_t ac_watts1 = 0;
 uint16_t ac_watts2 = 0;
 
 unsigned long currentMillis = 0;
 long previousMillis = 0;
-long timer1 = 0;
-long timer2 = 0;
-long interval = 1000;
-long fast_interval = 500;
-long slow_interval = 2000;
-long hours = 0;
-long minutes = 0;
-long seconds = 0;
+long update_rate    = 2000;
 
+uint16_t update_table[7][2] = { {0,   2}, // default 5 seconds
+                                {82,  1},
+                                {82,  2},
+                                {83,  5},
+                                {84, 10},
+                                {85, 30},
+                                {86, 60} };
+                                
 // Hardware ID and Node ID
 char hardware_id[7] = "HYDROIO";
 uint8_t node_id = 98;
@@ -101,7 +102,7 @@ void loop() {
     double irms1 = ct1.calcIrms(1480);
     double irms2 = ct2.calcIrms(1480);
     
-    uint8_t ac_voltage = 120;
+    //uint16_t ac_voltage = 120;
     
     ac_amps1 = irms1;
     ac_amps2 = irms2;
@@ -112,21 +113,24 @@ void loop() {
     ac_watts1 = ac_kw1;
     ac_watts2 = ac_kw2;
     
-    uint8_t total_amps =2*( irms1 + irms2);
-    uint16_t total_watts = 120 * (2*irms1) + 120 * (2*irms2); //( 2 * ac_voltage * irms1 + ac_voltage * irms2 ) - ac_watts_offset;
+    uint16_t total_amps = 2 * ( irms1 + irms2);
+    uint16_t total_watts = 120 * (2 * irms1) + 120 * (2 * irms2); //( 2 * ac_voltage * irms1 + ac_voltage * irms2 ) - ac_watts_offset;
       
     currentMillis = millis();    
-    if(currentMillis - previousMillis >= slow_interval) {
+    if(currentMillis - previousMillis >= update_rate) {
         digitalWrite(TX_MESH_LED, HIGH);
-        //                                   97s      999999s       999\n
+        //                                   127s      32767s       32767\n
         sprintf(packet_one, "%u %i %i \n", node_id, total_watts, total_amps);
+   
         if (debug == 1) {
         Serial.println(packet_one); 
         }
+        
         mesh.write(&packet_one, 'S', sizeof(packet_one));
     previousMillis = currentMillis;
     }
-    
+    digitalWrite(TX_MESH_LED, LOW);
+ 
 // Check for incoming data from other nodes
     if(network.available()){
         RF24NetworkHeader header;
@@ -142,11 +146,14 @@ void loop() {
         if (debug == 1) {
         Serial.println(dat);
         }
-        if (dat == 30) {
+        if (dat >= 82 && dat <= 86) {
+            update_rate = update_table[dat][1] * 1000;   
+            }
+        else if (dat == 90) {
             debug = 0;   
            // blinkm_setrgb(BLINKM_ADDRESS, 0,0,0);
             }
-        else if (dat == 31) {
+        else if (dat == 91) {
             debug = 1;  
           //  blinkm_setrgb(BLINKM_ADDRESS, 255,255,0);
             }   
@@ -164,7 +171,8 @@ void loop() {
         break;
     }
   }
-}
+
+} //end
 
 
 

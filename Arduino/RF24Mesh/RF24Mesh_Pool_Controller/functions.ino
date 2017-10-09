@@ -1,4 +1,34 @@
 
+//
+// cmd device      state
+// --------------------------------
+// 10  relay 1      off
+// 11  relay 1      on
+// 20  relay 2      off
+// 21  relay 2      on
+// 30  relay 3      off
+// 31  relay 3      on
+// 40  relay 4      off
+// 41  relay 4      on
+// 50  relay 5      off
+// 51  relay 5      on
+// 60  relay 6      off
+// 61  relay 6      on
+// 70  relay 7      off
+// 71  relay 7      on
+// 80  relay 8      off
+// 81  relay 8      on
+// 90  serial debug on
+// 91  serial debug off
+// 92  update rate  1 seconds
+// 93  update rate  2 seconds
+// 94  update rate  5 seconds
+// 95  update rate 10 seconds
+// 96  update rate 30 seconds
+// 97  update rate 60 seconds
+// 98
+// 99
+//
 
 
 static void node_command() {
