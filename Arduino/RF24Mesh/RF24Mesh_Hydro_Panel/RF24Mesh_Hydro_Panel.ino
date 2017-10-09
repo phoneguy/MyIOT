@@ -16,8 +16,8 @@
 #define RX_MESH_LED    3
 #define RF24_CE        9
 #define RF24_CSN       10
-#define RF24_MISO      12
 #define RF24_MOSI      11
+#define RF24_MISO      12
 #define RF24_SCLK      13
 
 // Arduino NANO analog pins

@@ -1,8 +1,10 @@
 
+
 /*
-        PoolController.ino by stevenharsanyi@gmail.com
-        rev 1.0 June 11, 2017 
+        RF24Mesh_GreenHouse_Controller.ino by stevenharsanyi
+        rev 1.0 October 1,2017 
 */
+
 #include "RF24Network.h"
 #include "RF24.h"
 #include "RF24Mesh.h"
@@ -25,59 +27,78 @@
 #define ADXL345_ADDRESS 0x53
 #define MS5611_ADDRESS  0xEF // 0xED
 
-// Arduino NANO digital pins
+// Arduino mega2560 digital pins
 #define RELAY1_PIN     2
 #define RELAY2_PIN     3
 #define DHT22_PIN      4   
 #define ONEWIREBUS_PIN 5
-#define RF24_CE        9
-#define RF24_CSN       10
-#define RF24_MOSI      11
-#define RF24_MISO      12
-#define RF24_SCLK      13
+#define RELAY3_PIN     6
+#define RELAY4_PIN     7
+#define RELAY5_PIN     8
+#define RELAY6_PIN     9
+#define RELAY7_PIN     10
+#define RELAY8_PIN     11
 
-// Arduino NANO analog pins
-#define DC_VOLT_PIN    A0
-#define DC_CURRENT_PIN A1
-#define AC_VOLT_PIN    A2
-#define AC_CURRENT_PIN A3
-#define I2C_SDA_PIN    A4
-#define I2C_SCL_PIN    A5
-#define LED_1_PIN      A6 
-#define LED_2_PIN      A7
+// Arduino mega2560 analog pins
+#define AC_VOLT_PIN          A0
+#define AC_CURRENT_PIN       A1
+#define WATERTANK_LOW_PIN    A2
+#define WATERTANK_FULL_PIN   A3
+#define I2C_SDA_PIN          A4
+#define I2C_SCL_PIN          A5
+#define DEHUMIDTANK_LOW      A6
+#define DEHUMIDTANK_FULL_PIN A7
 
 // Number of relay channels in use
-#define RELAY_CHANNELS 2
-//#define LOW 1
-//#define HIGH 0
+#define RELAY_CHANNELS 8
 #define RELAY_ON LOW  
 #define RELAY_OFF HIGH
 
-uint8_t relay1_state = 0;
-uint8_t relay2_state = 0;
-uint8_t state = 0;
-uint16_t tmp = 0;
-//                relay#, pin, state         
-int relays[3][3] = { {0, 0, 0},
-                     {1, 2, 0},
-                     {2, 3, 0} };
-                     
+// Arduino Digital I/O pin numbers for UNO R3
+//enum { Relay1=2, Relay2=3, Relay3=6, Relay4=7, Relay5=8, Relay6=9,
+//       Relay7=10,   Relay8=11};
+
+// Number of relays in the array
+//enum { maxRelayCount = sizeof relays / sizeof relays[0] };
+//enum { RELAY_OFF = HIGH };  // Set LOW or HIGH as appropriate
+
+//uint8_t relaystate[8] = {0,0,0,0,0,0,0,0};
+
 uint8_t rx_command = 0;
-//int tmp = 0;
+uint16_t tmp = 0;
 uint8_t rx_state = 0;
 uint8_t relay = 0;
 uint8_t relay_pin = 0;
+uint8_t state = 0;
+uint8_t relay_state  = 0;
+uint8_t relay1_state = 0;
+uint8_t relay2_state = 0;
+uint8_t relay3_state = 0;
+uint8_t relay4_state = 0;
+uint8_t relay5_state = 0;
+uint8_t relay6_state = 0;
+uint8_t relay7_state = 0;
+uint8_t relay8_state = 0;
+uint8_t relays[9][3] = { {0, 0, 0},
+                     {1, RELAY1_PIN, relay1_state},
+                     {2, RELAY2_PIN, relay2_state},
+                     {3, RELAY3_PIN, relay3_state},
+                     {4, RELAY4_PIN, relay4_state},
+                     {5, RELAY5_PIN, relay5_state},
+                     {6, RELAY6_PIN, relay6_state},
+                     {7, RELAY7_PIN, relay7_state},
+                     {8, RELAY8_PIN, relay8_state} 
+                     };
+uint8_t baro_state   = 0;
 
-uint8_t baro_state = 0;
-uint8_t compass_state = 0;
 uint8_t blinkm_state = 0;
 
-int pool_temp = 0;
-int air_temp = 0;
-int case_temp = 0;
-int board_temp = 0;
-int motor_temp = 0;
-int solar_temp = 0;
+int8_t flower_temp      = 0;
+int8_t grow_temp        = 0;
+int8_t watertank_temp   = 0;
+int8_t exhaust_temp     = 0;
+int8_t outside_temp     = 0;
+int8_t flowerlight_temp = 0;
 
 uint8_t voltage = 0;
 uint8_t current = 0;
@@ -100,11 +121,6 @@ uint8_t humidity = 0;
 uint16_t air_pressure = 0;
 float pressure = 0;
 
-int x = 0;
-int y = 0;
-int z = 0;
-int mag_z = 0;
-
 unsigned long currentMillis = 0;
 long previousMillis = 0;
 long timer1 = 0;
@@ -112,6 +128,7 @@ long timer2 = 0;
 long interval = 1000;
 long fast_interval = 100;
 long slow_interval = 5000;
+long two_seconds = 2000;
 
 // Hardware ID and Node ID
 char hardware_id[7] = "POOLIO";
@@ -126,9 +143,9 @@ char data[32] = "";
 String input_string = "";
 boolean string_complete = false;
 
-uint8_t debug = 0;
+uint8_t debug = 1;
 
-RF24 radio(9,10);
+RF24 radio(53,48);
 RF24Network network(radio);
 RF24Mesh mesh(radio, network);
 
@@ -145,12 +162,12 @@ DallasTemperature sensors(&oneWire);
 DHT22 dht(DHT22_PIN);
 
 void setup() {
-    
-    // Setup relay pins
-    pinMode(RELAY1_PIN,      OUTPUT);
-    pinMode(RELAY2_PIN,      OUTPUT);
-    digitalWrite(RELAY1_PIN, HIGH);
-    digitalWrite(RELAY2_PIN, HIGH);
+   
+    //Set pins to OFF & declare pins as OUTPUTS
+    for(int i = 1; i < 9; ++i) {
+    digitalWrite(relays[i][1], RELAY_OFF);
+    pinMode(relays[i][1], OUTPUT);
+    }
     
     // Setup OpenEnergyMonitor sensors
     emon1.voltage(AC_VOLT_PIN, 56.13, 1.7); // Voltage: input pin, calibration, phase_shift
@@ -207,24 +224,30 @@ void loop() {
     ac_watts   = (supplyVoltage * Irms) - ac_watts_offset; // integer
     
     currentMillis = millis();    
-    if(currentMillis - timer1 >= fast_interval) {   
+    if(currentMillis - timer1 >= two_seconds) {   
         sensors.requestTemperatures(); // Send the command to get temperature readings
-        pool_temp  = ((sensors.getTempCByIndex(0)) * 1.8 + 32);
-        air_temp   = ((sensors.getTempCByIndex(1)) * 1.8 + 32);
-        solar_temp = ((sensors.getTempCByIndex(2)) * 1.8 + 32);
-        
-      
-        
+        watertank_temp  = ((sensors.getTempCByIndex(0)) * 1.8 + 32);
+        exhaust_temp     = ((sensors.getTempCByIndex(1)) * 1.8 + 32);
+        flowerlight_temp = ((sensors.getTempCByIndex(2)) * 1.8 + 32);
+   
         dht.readHumidity();
         dht.readTemperature();
-        
+
+        relay1_state = relays[1][2];
+        relay2_state = relays[2][2];
+        relay3_state = relays[3][2];
+        relay4_state = relays[4][2];
+        relay5_state = relays[5][2];
+        relay6_state = relays[6][2];
+        relay7_state = relays[7][2];
+        relay8_state = relays[8][2];
+
         timer1 = millis();
      
-        //read_compass();   
     }
     
     humidity  = dht.humidity;
-    case_temp = dht.temperature_F;
+    outside_temp = dht.temperature_F;
         
     if (baro_state == 1) {
        currentMillis = millis();    
@@ -236,7 +259,7 @@ void loop() {
     }
     
     air_pressure = pressure * 0.01;
-    board_temp   = temperature;
+    grow_temp   = temperature;
     float atm = pressure / 101325; 
     float altitude = calcAltitude(pressure);
     
@@ -250,13 +273,11 @@ void loop() {
         if (blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 255, 0);
             }
-        relay1_state = relays[1][2];
-        relay2_state = relays[2][2];
-        
-        // packet size is 32 bytes, split 40 bytes              1            2          3          4          5           6            7         8           9            10           11  
-        // Print to hardware and software serial ports         SSS           SNNS      SNNS       SNNS       NNNS        NNNNS       NNNS        NNS       NNNNS          NS           NS
-        sprintf(packet_one, "%u %i %i %i %u %u ", node_id, pool_temp, air_temp, solar_temp, humidity, air_pressure); 
-        sprintf(packet_two, "%u %u %u %u %u \n", ac_voltage, ac_current, ac_watts, relay1_state, relay2_state);
+        // packet size is 32 bytes  
+        //                                          -99s        -999s     -999s           -999s        -999s         -999s             
+        sprintf(packet_one, "%u %i %i %i %i %i ", node_id, flower_temp, grow_temp, watertank_temp, exhaust_temp, outside_temp); 
+        //                                                      -999s             999s           1s            1s             1s            1s           1s             1s             1s          1
+        sprintf(packet_two, "%i %u %i %i %i %i %i %i %i %i\n", flowerlight_temp, air_pressure, relay1_state, relay2_state, relay3_state, relay4_state, relay5_state, relay6_state, relay7_state, relay8_state );
         mesh.write(&packet_one, 'S', sizeof(packet_one));
         mesh.write(&packet_two, 'S', sizeof(packet_two));
       
@@ -270,6 +291,10 @@ void loop() {
     }
       
     node_command();
+    if (debug == 1) {
+      serial_command();
+    }
+
     
 }
 

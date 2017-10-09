@@ -5,24 +5,35 @@
   * September 20, 2017 v1.0
   */
   
-  
-#include "RF24Network.h"
-#include "RF24.h"
-#include "RF24Mesh.h"
 #include <SPI.h>
+#include <RF24.h>
+#include <RF24Network.h>
+#include <RF24Mesh.h>
 //Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
 #include <EEPROM.h>
 
 /***** Configure the chosen CE,CS pins *****/
-RF24 radio(53,48); // Mega 2560
+RF24 radio(9, 10); // Mega 2560
 RF24Network network(radio);
 RF24Mesh mesh(radio,network);
+
+#define LED_TXRX          // Flash LED on SLIP device TX or RX 
+#define SLIP_DEBUG        // Will delay and flash LEDs if unable to find a node by IP address ( node needs to reconnect via RF24Mesh ) 
+#define DEBUG_LED_PIN A3
+
+#define UIP_BUFFER_SIZE MAX_PAYLOAD_SIZE
+
+uint8_t slip_buf[UIP_BUFFER_SIZE]; // MSS + TCP Header Length
 
 uint32_t timer = 0;
 uint8_t debug = 0;
 boolean string_complete = false;
 String input_string = "";
 char packet_one[32] = "";
+
+
+//Function to send incoming network data to the SLIP interface
+void networkToSLIP();
  
 void setup() {
   
@@ -36,20 +47,31 @@ void setup() {
     
     // Connect to the mesh
     mesh.begin();
-    mesh.setStaticAddress(99, 02);
-    mesh.setStaticAddress(98, 03);
+    //mesh.setStaticAddress(99, 02);
+    //mesh.setStaticAddress(98, 03);
+    
+    // Use the serial port as the SLIP device
+    slipdev_init(Serial);
+    
+// LED stuff
+  pinMode(DEBUG_LED_PIN, OUTPUT);
+#if defined (SLIP_DEBUG)
+  digitalWrite(DEBUG_LED_PIN, HIGH);
+  delay(200);
+  digitalWrite(DEBUG_LED_PIN, LOW);
+#endif
+
 }
+uint32_t active_timer =0;
 
 void loop() {    
-     
-    // Call mesh.update to keep the network updated
-    mesh.update();
-   
-    // In addition, keep the 'DHCP service' running on the master node so addresses will
-    // be assigned to the sensor nodes
+     // Provide RF24Network addresses to connecting & reconnecting nodes
+  if(millis() > 10000){
     mesh.DHCP();
-  
-    // Check for incoming data from the sensors
+  }
+
+  }
+     // Check for incoming data from the sensors
     if(network.available()){
         RF24NetworkHeader header;
         network.peek(header);
@@ -91,6 +113,9 @@ void loop() {
         Serial.println(F("**********************************"));
         }
     }  
+if(mesh.update() == EXTERNAL_DATA_TYPE) {
+    networkToSLIP();
+  }
 
 }
 
@@ -122,6 +147,36 @@ static void serial_event() {
         
     input_string = "";
     string_complete = false;
+
+}
+
+
+
+void networkToSLIP(){
+  
+    RF24NetworkFrame *frame = network.frag_ptr;
+    size_t size = frame->message_size;
+    uint8_t *pointer = frame->message_buffer;
+    slipdev_send(pointer, size);
+    //digitalWrite(DEBUG_LED_PIN, !digitalRead(DEBUG_LED_PIN));
+    
+}
+
+void flashLED() {
+#if defined (SLIP_DEBUG)
+  digitalWrite(DEBUG_LED_PIN, HIGH);
+  delay(200);
+  digitalWrite(DEBUG_LED_PIN, LOW);
+  delay(200);
+  digitalWrite(DEBUG_LED_PIN, HIGH);
+  delay(200);
+  digitalWrite(DEBUG_LED_PIN, LOW);
+  delay(200);
+  digitalWrite(DEBUG_LED_PIN, HIGH);
+  delay(200);
+  digitalWrite(DEBUG_LED_PIN, LOW);
+  delay(200);
+#endif
 
 }
 
