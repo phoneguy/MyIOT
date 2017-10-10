@@ -25,8 +25,8 @@ long b5;
 // Calibration values are required to calculate temp and pressure
 // This function should be called at the beginning of the program
 
-int bmp085_init(void)
-{
+int bmp085_init(void) {
+    if (baro == 1) {
     int n = Wire.requestFrom(BMP085_ADDRESS, 2);
     if (n == 2) {
     baro_state = 1;
@@ -34,6 +34,7 @@ int bmp085_init(void)
     bmp085_calibration();
     } else {
     baro_state = 0;
+    }
     }
 }
 

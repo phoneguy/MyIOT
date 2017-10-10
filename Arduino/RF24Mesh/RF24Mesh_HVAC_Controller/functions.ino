@@ -14,6 +14,8 @@ static void node_command() {
     switch(header.type){
         // Display the incoming millis() values from the sensor nodes
         case 'M':
+         digitalWrite(RX_MESH_LED, LOW);
+         //digitalWrite(TX_MESH_LED, HIGH);
         if (blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 255, 0, 0);
             }
@@ -39,14 +41,20 @@ static void node_command() {
             relay2_state = 1;
             }
         else if (dat == 30) {
+              digitalWrite(DEBUG_LED, HIGH);
+
             debug = 0;   
             }
         else if (dat == 31) {
+              digitalWrite(DEBUG_LED, LOW);
+
             debug = 1;  
             }   
         break;
       
         case 'S':
+                 digitalWrite(RX_MESH_LED, LOW);
+
         if (blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 255, 0);
             }
@@ -56,6 +64,8 @@ static void node_command() {
         break;
       
         default:
+         digitalWrite(RX_MESH_LED, LOW);
+
         if (blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 0, 255);
             }

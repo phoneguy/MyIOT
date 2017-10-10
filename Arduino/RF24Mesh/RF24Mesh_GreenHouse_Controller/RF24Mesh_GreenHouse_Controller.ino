@@ -47,7 +47,7 @@
 #define I2C_SDA_PIN          A4
 #define I2C_SCL_PIN          A5
 #define DEHUMIDTANK_LOW      A6
-#define DEHUMIDTANK_FULL_PIN A7
+#define DEHUMIDTANK_FULL     A7
 
 // Number of relay channels in use
 #define RELAY_CHANNELS 8

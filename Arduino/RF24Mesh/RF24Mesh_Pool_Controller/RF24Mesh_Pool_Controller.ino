@@ -31,10 +31,10 @@
 #define DHT22_PIN      4   
 #define ONEWIREBUS_PIN 5
 #define RF24_CE        9
-#define RF24_CSN       10
-#define RF24_MOSI      11
-#define RF24_MISO      12
-#define RF24_SCLK      13
+#define RF24_CSN      10
+#define RF24_MISO     11
+#define RF24_MOSI     12
+#define RF24_SCLK     13
 
 // Arduino NANO analog pins
 #define AC_VOLT_PIN    A2

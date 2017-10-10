@@ -1,6 +1,5 @@
- 
- /*
-  * RF24Mesh Sensor network serial gateway
+  /*
+  * RF24Mesh_Serial_Gateway
   * stevenharsanyi@gmail.com
   * September 20, 2017 v1.0
   */
@@ -13,13 +12,29 @@
 //Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
 #include <EEPROM.h>
 
+// Arduino NANO digital pins
+#define TX_MESH_LED    2
+#define RX_MESH_LED    3
+#define RF24_CE        9
+#define RF24_CSN      10
+#define RF24_MISO     11
+#define RF24_MOSI     12
+#define RF24_SCLK     13
+
+// Arduino MEGA 2560 pins
+#define MEGA_RF24_CE  53
+#define MEGA_RF24_CSN 48
+
+#define LOW 0
+#define HIGH 1
+
 /***** Configure the chosen CE,CS pins *****/
-RF24 radio(53,48); // Mega 2560
+RF24 radio(RF24_CE, RF24_CSN);
 RF24Network network(radio);
 RF24Mesh mesh(radio,network);
 
 uint32_t timer = 0;
-uint8_t debug = 0;
+uint8_t debug = 1;
 boolean string_complete = false;
 String input_string = "";
 char packet_one[32] = "";
@@ -38,9 +53,13 @@ void setup() {
     mesh.begin();
     mesh.setStaticAddress(99, 02);
     mesh.setStaticAddress(98, 03);
+    
 }
 
 void loop() {    
+    // Turn mesh tx and rx leds off
+    digitalWrite( TX_MESH_LED, LOW);
+    digitalWrite( RX_MESH_LED, LOW);
      
     // Call mesh.update to keep the network updated
     mesh.update();
@@ -59,21 +78,26 @@ void loop() {
     
         switch(header.type){
             case 'M':
+            digitalWrite( RX_MESH_LED, HIGH);
             network.read(header,&dat,sizeof(dat));
             Serial.println(dat);
             break;
       
             case 'S':
+            digitalWrite( RX_MESH_LED, HIGH);
+
             network.read(header, &data, sizeof(data));
             Serial.print(data);
             break;
       
             default:
+            digitalWrite( RX_MESH_LED, HIGH);
+
             network.read(header,0,0);
             Serial.println(header.type);
             break;
         }
-    
+        digitalWrite( RX_MESH_LED, LOW);
         serial_event();
     }
     
@@ -92,7 +116,7 @@ void loop() {
         }
     }  
 
-}
+}//END OF LOOP
 
 // Read from serial port and send node id and command
 static void serial_event() {
@@ -114,15 +138,17 @@ static void serial_event() {
         rx_command = tmp - (rx_nodeid * 100);
         
         if (rx_nodeid > 0) {
+            digitalWrite( TX_MESH_LED, HIGH);
             mesh.write(&rx_command, 'M', sizeof(rx_command), rx_nodeid);
             if (debug == 1 ) {
             Serial.print("Node ID: "); Serial.print(rx_nodeid); Serial.print(" Command: "); Serial.println(rx_command);
+           // digitalWrite( TX_MESH_LED, LOW);
             }
         }
         
     input_string = "";
     string_complete = false;
-
+    
 }
 
 

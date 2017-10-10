@@ -1,6 +1,6 @@
-
 /*
-        RF24_Mesh_Hydro_Panel.ino by stevenharsanyi@gmail.com
+        RF24_Mesh_Hydro_Panel.ino
+        by stevenharsanyi@gmail.com
         rev 1.0 June 11, 2017 
 */
 #include "RF24Network.h"
@@ -15,10 +15,10 @@
 #define TX_MESH_LED    2
 #define RX_MESH_LED    3
 #define RF24_CE        9
-#define RF24_CSN       10
-#define RF24_MOSI      11
-#define RF24_MISO      12
-#define RF24_SCLK      13
+#define RF24_CSN      10
+#define RF24_MISO     11
+#define RF24_MOSI     12
+#define RF24_SCLK     13
 
 // Arduino NANO analog pins
 #define AC_VOLT_PIN    0

@@ -30,8 +30,9 @@
  *
  */
 
-void blinkm_init()
-{
+void blinkm_init() {
+    if (blinkm == 1) {
+
     Wire.beginTransmission(BLINKM_ADDRESS);
     Wire.write('a');
     Wire.endTransmission();
@@ -46,6 +47,7 @@ void blinkm_init()
             } else 
             blinkm_state = 0;
      }
+    }     
 }     
 
 void blinkm_setrgb(byte address, byte red, byte green, byte blue) 

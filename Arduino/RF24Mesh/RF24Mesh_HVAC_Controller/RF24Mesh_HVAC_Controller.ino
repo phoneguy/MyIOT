@@ -26,14 +26,18 @@
 #define MS5611_ADDRESS  0xEF // 0xED
 
 // Arduino NANO digital pins
-#define RELAY1_PIN     2
-#define RELAY2_PIN     3
-#define DHT22_PIN      4   
-#define ONEWIREBUS_PIN 5
-#define RF24_CE        9
+
+#define RELAY1_PIN      2
+#define RELAY2_PIN      3
+#define RX_MESH_LED     4 
+#define TX_MESH_LED     5
+#define DEBUG_LED       6 
+#define DHT22_PIN       7 
+#define ONEWIREBUS_PIN  8
+#define RF24_CE         9
 #define RF24_CSN       10
-#define RF24_MOSI      11
-#define RF24_MISO      12
+#define RF24_MISO      11
+#define RF24_MOSI      12
 #define RF24_SCLK      13
 
 // Arduino NANO analog p
@@ -46,11 +50,12 @@
 #define RELAY_CHANNELS 2
 #define RELAY_ON LOW  
 #define RELAY_OFF HIGH
-
 uint8_t relay1_state = 0;
 uint8_t relay2_state = 0;
+
+#define baro 0
+#define blinkm 0
 uint8_t baro_state = 0;
-uint8_t compass_state = 0;
 uint8_t blinkm_state = 0;
 
 int air_return = 0;
@@ -90,7 +95,8 @@ char data[32] = "";
 String input_string = "";
 boolean string_complete = false;
 
-uint8_t debug = 0;
+uint8_t debug = 1;
+uint32_t timer = 0;
 
 RF24 radio(9,10);
 RF24Network network(radio);
@@ -110,15 +116,21 @@ DHT22 dht(DHT22_PIN);
 void setup() {
     
     // Setup relay pins
-    pinMode(RELAY1_PIN,      OUTPUT);
-    pinMode(RELAY2_PIN,      OUTPUT);
-    digitalWrite(RELAY1_PIN, HIGH);
-    digitalWrite(RELAY2_PIN, HIGH);
-   
+    pinMode(RELAY1_PIN,       OUTPUT);
+    pinMode(RELAY2_PIN,       OUTPUT);
+    pinMode(RX_MESH_LED,      OUTPUT);
+    pinMode(TX_MESH_LED,      OUTPUT);
+    pinMode(DEBUG_LED,        OUTPUT);
+    digitalWrite(RELAY1_PIN,  HIGH);
+    digitalWrite(RELAY2_PIN,  HIGH);
+    digitalWrite(RX_MESH_LED, HIGH);
+    digitalWrite(TX_MESH_LED, HIGH);
+    digitalWrite(DEBUG_LED,   HIGH);
+
     // Start usb serial connections
     Serial.begin(9600);
    
-    mesh.setNodeID(99);
+    mesh.setNodeID(91);
     
     sprintf(id, "Hardware ID: %s", hardware_id);
     Serial.println(id);
@@ -131,7 +143,7 @@ void setup() {
     // Join the i2c bus
     Wire.begin();
     
-    scan_i2cbus();
+    //scan_i2cbus();
  
     // Start barometer
     bmp085_init();
@@ -150,7 +162,21 @@ void setup() {
 void loop() {
 
     mesh.update();
-    
+     
+    if (debug == 1) {
+        if(millis() - timer > 3000){
+        timer = millis();
+        Serial.println(" ");
+        Serial.println(F("********Assigned Addresses********"));
+        for(int i=0; i<mesh.addrListTop; i++){
+        Serial.print("NodeID: ");
+        Serial.print(mesh.addrList[i].nodeID);
+        Serial.print(" RF24Network Address: 0");
+        Serial.println(mesh.addrList[i].address,OCT);
+        }
+        Serial.println(F("**********************************"));
+        }
+    }
     currentMillis = millis();    
     if(currentMillis - timer1 >= fast_interval) {   
         sensors.requestTemperatures(); // Send the command to get temperature readings
@@ -168,11 +194,11 @@ void loop() {
     case_temp = dht.temperature_F;
         
     if (baro_state == 1) {
-       currentMillis = millis();    
-       if(currentMillis - timer2 >= interval) {
+        currentMillis = millis();    
+        if(currentMillis - timer2 >= interval) {
         temperature  = bmp085GetTemperature(bmp085ReadUT()); //MUST be called first
         pressure     = bmp085GetPressure(bmp085ReadUP());
-       }
+        }
         timer2 = millis();   
     }
     
@@ -182,12 +208,13 @@ void loop() {
     float altitude = calcAltitude(pressure);
     
     if (blinkm_state == 1) {
-//        blinkm_setrgb(BLINKM_ADDRESS, (ac_watts / 17), (ac_voltage), (debug * 255));
+        blinkm_setrgb(BLINKM_ADDRESS, air_return, air_inside, air_supply);
         }       
                 
     currentMillis = millis();    
     if(currentMillis - previousMillis >= slow_interval) {    
-      
+        digitalWrite(RX_MESH_LED, HIGH);
+        digitalWrite(TX_MESH_LED, LOW);
         if (blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 255, 0);
             }
@@ -199,6 +226,8 @@ void loop() {
         mesh.write(&packet_two, 'S', sizeof(packet_two));
       
         if (debug == 1) {  
+              digitalWrite(DEBUG_LED, LOW);
+
             Serial.print(packet_one);        
             Serial.print(packet_two);
         }
@@ -209,9 +238,6 @@ void loop() {
       
     node_command();
     
-}
-
-
-
+} //END
 
 
