@@ -18,6 +18,14 @@
 // 71  relay 7      on
 // 80  relay 8      off
 // 81  relay 8      on
+// 82  1 second     update rate
+// 83  2 second     update rate
+// 84  5 second     update rate
+// 85  10 second    update rate
+// 86  30 second    update rate
+// 87  60 second    update rate
+// 88
+// 89
 // 90  serial debug on
 // 91  serial debug off
 // 92  update rate  1 seconds
@@ -47,7 +55,7 @@ static void node_command() {
     uint8_t state = 0;
     
     switch(header.type){
-        // Display the incoming millis() values from the sensor nodes
+
         case 'M':
         if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 255, 0, 0);
@@ -57,7 +65,9 @@ static void node_command() {
             // mesh.write(&dat, 'M', sizeof(dat));
             Serial.println(dat);
         }
-        if (dat >= min_relays && dat <= max_relays) {
+        if (dat >+ 10 && dat <= 81) {
+//                  if (dat >= min_relays && dat <= max_relays) {
+
             rx_command = dat;
             relay = rx_command / 10;
             relay_pin = relays[relay][1];
@@ -78,7 +88,7 @@ static void node_command() {
                 digitalWrite(relay_pin, RELAY_ON);
             }
         }
-        else if (dat >= 82 && dat <= 86) {
+        else if (dat >= 82 && dat <= 87) {
             update_rate = update_table[dat][1] * 1000;   
             }
         else if (dat == 90) {

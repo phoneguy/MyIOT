@@ -13,13 +13,14 @@
 #include <EEPROM.h>
 
 // Arduino NANO digital pins
-#define TX_MESH_LED    2
-#define RX_MESH_LED    3
-#define RF24_CE        9
-#define RF24_CSN      10
-#define RF24_MISO     11
-#define RF24_MOSI     12
-#define RF24_SCLK     13
+#define RX_MESH_LED 4
+#define TX_MESH_LED 5
+#define DEBUG_LED   6 
+#define RF24_CE     9
+#define RF24_CSN    10
+#define RF24_MISO   11
+#define RF24_MOSI   12
+#define RF24_SCLK   13
 
 // Arduino MEGA 2560 pins
 #define MEGA_RF24_CE  53
@@ -34,7 +35,7 @@ RF24Network network(radio);
 RF24Mesh mesh(radio,network);
 
 uint32_t timer = 0;
-uint8_t debug = 1;
+uint8_t debug =  0;
 boolean string_complete = false;
 String input_string = "";
 char packet_one[32] = "";
@@ -51,15 +52,19 @@ void setup() {
     
     // Connect to the mesh
     mesh.begin();
-    mesh.setStaticAddress(99, 02);
-    mesh.setStaticAddress(98, 03);
+    //mesh.setStaticAddress(99, 02);
+    //mesh.setStaticAddress(98, 03);
     
+    // Turn mesh tx and rx leds off
+    pinMode(TX_MESH_LED,      OUTPUT);
+    pinMode(RX_MESH_LED,      OUTPUT);
+    digitalWrite(TX_MESH_LED, HIGH);
+    digitalWrite(RX_MESH_LED, HIGH);
 }
 
 void loop() {    
-    // Turn mesh tx and rx leds off
-    digitalWrite( TX_MESH_LED, LOW);
-    digitalWrite( RX_MESH_LED, LOW);
+   
+    
      
     // Call mesh.update to keep the network updated
     mesh.update();
@@ -78,31 +83,30 @@ void loop() {
     
         switch(header.type){
             case 'M':
-            digitalWrite( RX_MESH_LED, HIGH);
+            digitalWrite( RX_MESH_LED, LOW);
             network.read(header,&dat,sizeof(dat));
             Serial.println(dat);
             break;
       
             case 'S':
-            digitalWrite( RX_MESH_LED, HIGH);
-
+            digitalWrite( RX_MESH_LED, LOW);
             network.read(header, &data, sizeof(data));
             Serial.print(data);
             break;
       
             default:
-            digitalWrite( RX_MESH_LED, HIGH);
-
+            digitalWrite( RX_MESH_LED, LOW);
             network.read(header,0,0);
             Serial.println(header.type);
             break;
         }
-        digitalWrite( RX_MESH_LED, LOW);
+        digitalWrite( RX_MESH_LED, HIGH);
+        
         serial_event();
     }
     
     if (debug == 1) {
-        if(millis() - timer > 30000){
+        if(millis() - timer > 10000){
         timer = millis();
         Serial.println(" ");
         Serial.println(F("********Assigned Addresses********"));
@@ -127,6 +131,8 @@ static void serial_event() {
 
         if (rx_character == '\n') {
         string_complete = true;
+        digitalWrite( TX_MESH_LED, LOW);
+
         }
     }  
         // 2 digit node id and 2 digit command
@@ -138,12 +144,11 @@ static void serial_event() {
         rx_command = tmp - (rx_nodeid * 100);
         
         if (rx_nodeid > 0) {
-            digitalWrite( TX_MESH_LED, HIGH);
             mesh.write(&rx_command, 'M', sizeof(rx_command), rx_nodeid);
             if (debug == 1 ) {
             Serial.print("Node ID: "); Serial.print(rx_nodeid); Serial.print(" Command: "); Serial.println(rx_command);
-           // digitalWrite( TX_MESH_LED, LOW);
             }
+            digitalWrite( TX_MESH_LED, HIGH);
         }
         
     input_string = "";

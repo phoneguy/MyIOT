@@ -5,57 +5,61 @@ static void node_command() {
 
    if(network.available()){
        
-        RF24NetworkHeader header;
-        network.peek(header);
-
-    uint32_t dat = 0;
-    char data[32] = "";
+    RF24NetworkHeader header;
+    network.peek(header);
+        
+    uint32_t dat=0;
+    char data[32]="";
+    uint8_t rx_command = 0;
+    uint8_t rx_state = 0;
+    uint8_t relay = 0;
+    uint8_t relay_pin = 0;
+    uint8_t state = 0;
     
     switch(header.type){
-        // Display the incoming millis() values from the sensor nodes
+
         case 'M':
-         digitalWrite(RX_MESH_LED, LOW);
-         //digitalWrite(TX_MESH_LED, HIGH);
-        if (blinkm_state == 1) {
+        if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 255, 0, 0);
             }
         network.read(header,&dat,sizeof(dat));
         if (debug == 1) {
-           // mesh.write(&dat, 'M', sizeof(dat));
+            // mesh.write(&dat, 'M', sizeof(dat));
             Serial.println(dat);
         }
-        if(dat == 10) {
-            digitalWrite(RELAY1_PIN, RELAY_OFF);
-            relay1_state = 0;
-            }
-        else if (dat == 11) {
-            digitalWrite(RELAY1_PIN, RELAY_ON);
-            relay1_state = 1;
-            }
-        else if (dat == 20) {
-            digitalWrite(RELAY2_PIN, RELAY_OFF);
-            relay2_state = 0;
-            }
-        else if (dat == 21) {
-            digitalWrite(RELAY2_PIN, RELAY_ON);
-            relay2_state = 1;
-            }
-        else if (dat == 30) {
-              digitalWrite(DEBUG_LED, HIGH);
+        if (dat >= 10 && dat <= 81) {
 
+            rx_command = dat;
+            relay = rx_command / 10;
+            relay_pin = relays[relay][1];
+            rx_state = (rx_command - (relay * 10));
+            state = relays[relay][2];
+     
+            if (rx_state > 1 ) {
+                rx_state = state;
+            }
+            else {
+                relays[relay][2] = rx_state;
+                digitalWrite(relay_pin, rx_state);
+            }
+        }
+        else if (dat >= 82 && dat <= 87) {
+            update_rate = update_table[dat][1] * 1000;   
+            }
+        else if (dat == 90) {
+            digitalWrite(DEBUG_LED, HIGH);
             debug = 0;   
             }
-        else if (dat == 31) {
-              digitalWrite(DEBUG_LED, LOW);
-
+        else if (dat == 91) {
+            digitalWrite(DEBUG_LED, LOW);
             debug = 1;  
             }   
         break;
       
         case 'S':
-                 digitalWrite(RX_MESH_LED, LOW);
+            digitalWrite(RX_MESH_LED, LOW);
 
-        if (blinkm_state == 1) {
+        if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 255, 0);
             }
         network.read(header, &data, sizeof(data));
@@ -66,15 +70,17 @@ static void node_command() {
         default:
          digitalWrite(RX_MESH_LED, LOW);
 
-        if (blinkm_state == 1) {
+        if (blinkm == 1 && blinkm_state == 1) {
             blinkm_setrgb(BLINKM_ADDRESS, 0, 0, 255);
             }
         network.read(header, 0, 0);
         Serial.println(header. type);
         break;
     }
-    
+ digitalWrite(RX_MESH_LED, HIGH);
   }
+        
+
 }
 
 static void scan_i2cbus() {
@@ -92,6 +98,7 @@ static void scan_i2cbus() {
                 Serial.print(i, HEX);
                 Serial.print(", ");
                 if (i == BLINKM_ADDRESS) {
+                    blinkm_state = 1;
                     Serial.print("blinkm");
                     }
                 Serial.println(""); 
@@ -101,6 +108,7 @@ static void scan_i2cbus() {
             Serial.print(i, HEX);
             Serial.print(", ");
                 if (i == HMC5883_ADDRESS) {
+                    compass_state = 1;      
                     Serial.print("hmc4883");
                     }
                 else if (i == BMA180_ADDRESS) {
@@ -110,6 +118,7 @@ static void scan_i2cbus() {
                     Serial.print("itg3200");
                     }
                 else if (i == BMP085_ADDRESS) {
+                    baro_state = 1;
                     Serial.print("bmp085");
                     }
                 else if (i == MPU6050_ADDRESS) {

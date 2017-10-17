@@ -57,18 +57,18 @@ uint8_t compass_state = 0;
 uint8_t baro_state    = 0;
 uint8_t blinkm_state  = 0;
 
-uint8_t max_relays    = (RELAY_CHANNELS * 10) + 1; // control msg is relay and state ie: relay 1 state 0 is 10
+uint8_t max_relays    = (RELAY_CHANNELS * 10); // control msg is relay and state ie: relay 1 state 0 is 10
 uint8_t min_relays    = (RELAY_CHANNELS - (RELAY_CHANNELS - 1)) * 10;
 uint8_t relay1_state  = 0;
 uint8_t relay2_state  = 0;
 //              relay#, pin, state         
 uint8_t relays[3][3] = { {0, 0, 0},
-                         {1, 2, 0},
-                         {2, 3, 0} };
-uint8_t rx_command = 0;
-uint8_t rx_state   = 0;
-uint8_t relay      = 0;
-uint8_t relay_pin  = 0;
+                         {1, RELAY1_PIN, 0},
+                         {2, RELAY2_PIN, 0} };
+//uint8_t rx_command = 0;
+//uint8_t rx_state   = 0;
+//uint8_t relay      = 0;
+//uint8_t relay_pin  = 0;
 
 int air_temp   = 0;
 int board_temp = 0;
@@ -103,14 +103,15 @@ long timer1  = 0;
 long timer2  = 0;
 long one_hz  = 1000;
 long ten_hz  = 100;
-long update_rate = 5000; //     command  seconds
+long update_rate = 0;
+//                           command  seconds
 uint16_t update_table[7][2] = { {0,   5}, // default 5 seconds
                                 {82,  1},
-                                {82,  2},
-                                {83,  5},
-                                {84, 10},
-                                {85, 30},
-                                {86, 60} };
+                                {83,  2},
+                                {84,  5},
+                                {85, 10},
+                                {86, 30},
+                                {87, 60} };
                                 
 // Hardware ID and Node ID
 char hardware_id[7] = "POOLIO";
@@ -152,13 +153,13 @@ void setup() {
     digitalWrite(RELAY2_PIN, HIGH);
     
     // Setup OpenEnergyMonitor sensors
-    emon1.voltage(AC_VOLT_PIN, 56.13, 1.7); // Voltage: input pin, calibration, phase_shift
-    emon1.current(AC_CURRENT_PIN, 228.22);  // Current: input pin, calibration. 
+    emon1.voltage(AC_VOLT_PIN, 56.13, 1.7); //130 Voltage: input pin, calibration, phase_shift
+    emon1.current(AC_CURRENT_PIN, 228.22);  //136.36 Current: input pin, calibration. 
 
     // Start usb serial connections
     Serial.begin(9600);
    
-    mesh.setNodeID(99);
+    mesh.setNodeID(node_id);
     
     sprintf(id, "Hardware ID: %s", hardware_id);
     Serial.println(id);
@@ -187,7 +188,9 @@ void setup() {
     
     // Start DHT22 temperature and humidity sensor
     dht.begin();
-       
+
+    update_rate = update_table[0][1] * 1000;
+    
 }
 
 void loop() {
@@ -220,9 +223,9 @@ void loop() {
         if (baro == 1 && baro_state == 1) {
         temperature  = bmp085GetTemperature(bmp085ReadUT()); //MUST be called first
         pressure     = bmp085GetPressure(bmp085ReadUP());
-        }
         air_pressure = pressure * 0.01;
         board_temp   = temperature;
+        }       
     
         if (compass == 1 && compass_state == 1) {
         read_compass();  

@@ -38,6 +38,9 @@
 #define RELAY6_PIN     9
 #define RELAY7_PIN     10
 #define RELAY8_PIN     11
+#define RX_MESH_LED     14 
+#define TX_MESH_LED     15
+#define DEBUG_LED       16 
 
 // Arduino mega2560 analog pins
 #define AC_VOLT_PIN          A0
@@ -64,12 +67,7 @@
 
 //uint8_t relaystate[8] = {0,0,0,0,0,0,0,0};
 
-uint8_t rx_command = 0;
-uint16_t tmp = 0;
-uint8_t rx_state = 0;
-uint8_t relay = 0;
-uint8_t relay_pin = 0;
-uint8_t state = 0;
+
 uint8_t relay_state  = 0;
 uint8_t relay1_state = 0;
 uint8_t relay2_state = 0;
@@ -80,14 +78,14 @@ uint8_t relay6_state = 0;
 uint8_t relay7_state = 0;
 uint8_t relay8_state = 0;
 uint8_t relays[9][3] = { {0, 0, 0},
-                     {1, RELAY1_PIN, relay1_state},
-                     {2, RELAY2_PIN, relay2_state},
-                     {3, RELAY3_PIN, relay3_state},
-                     {4, RELAY4_PIN, relay4_state},
-                     {5, RELAY5_PIN, relay5_state},
-                     {6, RELAY6_PIN, relay6_state},
-                     {7, RELAY7_PIN, relay7_state},
-                     {8, RELAY8_PIN, relay8_state} 
+                     {1, RELAY1_PIN, 0},
+                     {2, RELAY2_PIN, 0},
+                     {3, RELAY3_PIN, 0},
+                     {4, RELAY4_PIN, 0},
+                     {5, RELAY5_PIN, 0},
+                     {6, RELAY6_PIN, 0},
+                     {7, RELAY7_PIN, 0},
+                     {8, RELAY8_PIN, 0} 
                      };
 uint8_t baro_state   = 0;
 
@@ -129,10 +127,18 @@ long interval = 1000;
 long fast_interval = 100;
 long slow_interval = 5000;
 long two_seconds = 2000;
-
+uint8_t update_rate    = 0;
+//                           command  seconds
+uint16_t update_table[7][2] = { {0, 10}, // default 10 seconds
+                               {82,  1},
+                               {82,  2},
+                               {83,  5},
+                               {84, 10},
+                               {85, 30},
+                               {86, 60} };
 // Hardware ID and Node ID
-char hardware_id[7] = "POOLIO";
-uint8_t node_id = 99;
+char hardware_id[7] = "GREENIO";
+uint8_t node_id = 96;
 
 // Serial IO
 char packet_one[32] = "";
@@ -163,10 +169,10 @@ DHT22 dht(DHT22_PIN);
 
 void setup() {
    
-    //Set pins to OFF & declare pins as OUTPUTS
-    for(int i = 1; i < 9; ++i) {
-    digitalWrite(relays[i][1], RELAY_OFF);
+    // Set pins to OFF & declare pins as OUTPUTS
+    for(int i = 1; i <= RELAY_CHANNELS; ++i) {
     pinMode(relays[i][1], OUTPUT);
+    digitalWrite(relays[i][1], RELAY_OFF);
     }
     
     // Setup OpenEnergyMonitor sensors
@@ -176,7 +182,7 @@ void setup() {
     // Start usb serial connections
     Serial.begin(9600);
    
-    mesh.setNodeID(99);
+    mesh.setNodeID(node_id);
     
     sprintf(id, "Hardware ID: %s", hardware_id);
     Serial.println(id);
@@ -205,7 +211,10 @@ void setup() {
     
     // Start DHT22 temperature and humidity sensor
     dht.begin();
-       
+    
+    // Set node update rate
+    update_rate = update_table[0][1] * 1000;
+           
 }
 
 void loop() {
@@ -232,7 +241,8 @@ void loop() {
    
         dht.readHumidity();
         dht.readTemperature();
-
+ humidity  = dht.humidity;
+    outside_temp = dht.temperature_F;
         relay1_state = relays[1][2];
         relay2_state = relays[2][2];
         relay3_state = relays[3][2];
@@ -246,8 +256,7 @@ void loop() {
      
     }
     
-    humidity  = dht.humidity;
-    outside_temp = dht.temperature_F;
+   
         
     if (baro_state == 1) {
        currentMillis = millis();    

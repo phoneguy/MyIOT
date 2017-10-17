@@ -24,31 +24,26 @@ static void node_command() {
             }
         network.read(header,&dat,sizeof(dat));
         if (debug == 1) {
-           // mesh.write(&dat, 'M', sizeof(dat));
             Serial.println(dat);
         }
-        if ( dat > 9 && dat < 82 ) {
+        if ( dat >+ 10 && dat <= 81 ) { // Command range 10 to 99
             rx_command = dat;
             relay = rx_command / 10;
             relay_pin = relays[relay][1];
             rx_state = (rx_command - (relay * 10));
             state = relays[relay][2];
 
-        if (rx_state > 1 ) {
+            if (rx_state > 1 ) {
                 rx_state = state;
-        }
-        else {
+            }
+            else {
                 relays[relay][2] = rx_state;
+                digitalWrite(relay_pin, rx_state);
+            }
         }
-                      
-        if (rx_state == 0) {
-                digitalWrite(relay_pin, RELAY_OFF);
-        }
-        else if (rx_state == 1) {
-                digitalWrite(relay_pin, RELAY_ON);
-        }            
-         
-        }
+        else if (dat >= 82 && dat <= 87) {
+            update_rate = update_table[dat][1] * 1000;   
+            }
         else if (dat == 90) {
             debug = 0;   
             }
@@ -96,7 +91,7 @@ static void serial_command() {
     
     rx_command = input_string.toInt();
 
-if (rx_command > 9 && rx_command < 82) {
+if (rx_command >= 10 && rx_command <= 81) {
 
     input_string = "";
     string_complete = false;
@@ -106,69 +101,23 @@ if (rx_command > 9 && rx_command < 82) {
     state = relays[relay][2];
   
     if ( rx_state >= 2) { 
-      Serial.print("ERROR: bad received state: ");
-      Serial.println(rx_state);
-      rx_state = state;
-      //exit;
-      
-    } else {
-         
-            Serial.print("Received Command: ");
-            Serial.println(rx_command);
-            Serial.print("Relay: ");
-            Serial.println(relay);
-            Serial.print("Relay pin: ");
-            Serial.println(relay_pin);
-            Serial.print("State: ");
-            Serial.println(rx_state);
-            Serial.println("");
-            Serial.print("Current state: ");
-            Serial.print(state);
-            Serial.print("  Received state: ");
-            Serial.print(rx_state);
-            Serial.println(" ");
-           
+        rx_state = state;
     }
-    
-if (rx_state == state && relay > 0 && relay < 9) { 
-    Serial.print("NO UPDATE: ");
-    
-    } else if (rx_state != state) {
-      Serial.print( "UPDATE: ");
-      }
-
     relays[relay][2] = rx_state; // update relay state
-    digitalWrite(13, rx_state);  // toggle pin
-    
-if ( relay > 0 && relay < 9) {
-     
-          Serial.print("Relay ");
-          Serial.print(relays[relay][0]);
-          Serial.print(", Pin ");
-          Serial.print(relays[relay][1]);
-          Serial.print(", State ");
-          Serial.println(relays[relay][2]);
-          Serial.println("Done");
-          Serial.println("");
-         
+    digitalWrite(relay_pin, rx_state);  // toggle pin
     }
-
-} else if (rx_command == 99) {
-        debug = 1;
-        
-} 
-else if (rx_command == 98) {
+    else if (rx_command == 90) {
         debug = 0;
-        
-} 
-else {
+    }
+    else if (rx_command == 91) {
+        debug = 1;
+    }
+    else {
     input_string = "";
     string_complete = false;
     }
 
-//delay(1000);
-
-} // end
+}
 
 
 static void scan_i2cbus() {
