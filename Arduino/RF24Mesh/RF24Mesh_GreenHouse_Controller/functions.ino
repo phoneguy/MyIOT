@@ -26,7 +26,7 @@ static void node_command() {
         if (debug == 1) {
             Serial.println(dat);
         }
-        if ( dat >+ 10 && dat <= 81 ) { // Command range 10 to 99
+        if ( dat >= 10 && dat <= 81 ) { // Command range 10 to 99
             rx_command = dat;
             relay = rx_command / 10;
             relay_pin = relays[relay][1];

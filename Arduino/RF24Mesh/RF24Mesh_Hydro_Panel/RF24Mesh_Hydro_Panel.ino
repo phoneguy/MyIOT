@@ -27,10 +27,9 @@
 #define AC_CT2_PIN     2
 
 unsigned long currentMillis = 0;
-long previousMillis = 0;
-uint8_t update_rate    = 0;
-long timer          = 0;
-
+long previousMillis  = 0;
+long timer           = 0;
+uint16_t update_rate = 0;
 uint16_t update_table[7][2] = { {0,   2}, // default 2 seconds
                                 {82,  1},
                                 {83,  2},
@@ -69,15 +68,14 @@ void setup() {
 
     // Setup OpenEnergyMonitor sensors
     // emon1.voltage(AC_VOLT_PIN, 54.26, 1.7); // Voltage: input pin, calibration, phase_shift
-    ct1.current(1, 88.22);  //66.22 Current: input pin, calibration. 
-    ct2.current(2, 88.22);  //66.22
+    ct1.current(1, 110.22);  //150 66.22 Current: input pin, calibration. 
+    ct2.current(2, 114.22);  //150 66.22
    
     // Start usb serial connections
     Serial.begin(9600);
     
     mesh.setNodeID(node_id);
 
-    Serial.println("Connected To USB Serial Port");
     sprintf(id, "Hardware ID: %s", hardware_id);
     Serial.println(id);
     Serial.print("NodeID: ");
@@ -86,9 +84,6 @@ void setup() {
     // Now that this node has a unique ID, connect to the mesh
     mesh.begin();
                
-    // Print variables header info to usb serial port
-    Serial.println("NodeID Watts Amps");
-    
     // Set node update rate
     update_rate = update_table[0][1] * 1000;
     
@@ -97,17 +92,21 @@ void setup() {
 void loop() {
   
     mesh.update();
-
-    // V × ICT1 + V × ICT2 = V × (I1 + I3) + V × (I2 + I3) = V × I1 + V × I2 + 2 × V × I3 for north america 240v
+    
     double irms1 = ct1.calcIrms(1480);
     double irms2 = ct2.calcIrms(1480);
     double volts = 120.00;
     double amps = irms1 + irms2;
-    double int_amps = amps * 10; // ie: convert 3.2 to 32 and divide by 10 at receiving end to send decimal
     double watts = volts * amps;
+    double int_amps = amps * 10; // ie: convert 3.2 to 32 and divide by 10 at receiving end to send decimal
+
     uint16_t total_amps = int_amps;
     uint16_t total_watts = watts;
     
+    if (debug == 1) {
+      Serial.print(irms1); Serial.print("  "); Serial.print(irms1 * 120); Serial.print("  "); Serial.print(irms2); Serial.print("  "); Serial.println(irms2 * 120);
+      }
+      
     currentMillis = millis();    
     if(currentMillis - previousMillis >= update_rate) {
         digitalWrite(TX_MESH_LED, LOW);
