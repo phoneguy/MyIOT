@@ -1,0 +1,54 @@
+/*
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+
+ /*
+  * 10 RELAY 1 OFF
+  * 11 RELAY 2 ON
+  * 12 SERVO 1
+  * 20 RELAY 2 OFF
+  * 21 RELAY 2 ON
+  * 22 SERVO 2
+  * 30 RELAY 3 OFF
+  * 31 RELAY 3 ON
+  * 32 SERVO 3
+  * 40 RELAY 4 OFF
+  * 41 RELAY 4 ON
+  * 42 SERVO 4 
+  * 50 RELAY 5 OFF
+  * 51 RELAY 5 ON
+  * 
+  * 60 RELAY 6 OFF
+  * 61 RELAY 6 ON
+  * 
+  * 70 RELAY 7 OFF
+  * 71 RELAY 7 ON
+  * 
+  * 80 RELAY_8_OFF 80
+  * 81 RELAY_8_ON  81
+  * 82 UPDATE RATE NODE DEFAULT
+  * 83 UPDATE RATE 1 SECONDS
+  * 84 UPDATE RATE 2
+  * 85 UPDATE RATE 5
+  * 86 UPDATE RATE 10
+  * 87 UPDATE RATE 30
+  * 88 UPDATE RATE 60
+  * 89
+  * 
+  * 90 DEBUG OFF
+  * 91 DEBUG ON 
+  * 92
+  * 93
+  * 94
+  * 95
+  * 96
+  * 97
+  * 98
+  * 99
+  * 
+  * 
+  */

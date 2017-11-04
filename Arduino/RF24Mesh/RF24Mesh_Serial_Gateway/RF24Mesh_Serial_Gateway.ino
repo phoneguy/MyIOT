@@ -52,8 +52,6 @@ void setup() {
     
     // Connect to the mesh
     mesh.begin();
-    //mesh.setStaticAddress(99, 02);
-    //mesh.setStaticAddress(98, 03);
     
     // Turn mesh tx and rx leds off
     pinMode(TX_MESH_LED,      OUTPUT);
@@ -63,8 +61,6 @@ void setup() {
 }
 
 void loop() {    
-   
-    
      
     // Call mesh.update to keep the network updated
     mesh.update();
@@ -120,7 +116,7 @@ void loop() {
         }
     }  
 
-}//END OF LOOP
+}
 
 // Read from serial port and send node id and command
 static void serial_event() {
@@ -132,7 +128,6 @@ static void serial_event() {
         if (rx_character == '\n') {
         string_complete = true;
         digitalWrite( TX_MESH_LED, LOW);
-
         }
     }  
         // 2 digit node id and 2 digit command

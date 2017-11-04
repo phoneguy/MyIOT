@@ -49,8 +49,8 @@
 
 // Enable or disable devices
 #define compass 0
-#define baro    1
-#define blinkm  1
+#define baro    0
+#define blinkm  0
 
 // Variables
 uint8_t compass_state = 0;
@@ -149,6 +149,9 @@ void setup() {
     // Setup relay pins
     pinMode(RELAY1_PIN,      OUTPUT);
     pinMode(RELAY2_PIN,      OUTPUT);
+    pinMode(13, OUTPUT);
+    pinMode(11, OUTPUT);
+    pinMode(12, OUTPUT);
     digitalWrite(RELAY1_PIN, HIGH);
     digitalWrite(RELAY2_PIN, HIGH);
     

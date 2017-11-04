@@ -44,7 +44,7 @@ static void node_command() {
             }
         }
         else if (dat >= 82 && dat <= 87) {
-            update_rate = update_table[dat][1] * 1000;   
+            update_rate = update_table[dat - 82][1] * 1000;   
             }
         else if (dat == 90) {
             digitalWrite(DEBUG_LED, HIGH);

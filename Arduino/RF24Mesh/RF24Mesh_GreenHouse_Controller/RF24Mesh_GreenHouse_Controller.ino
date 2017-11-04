@@ -16,7 +16,7 @@
 #include <OneWire.h> 
 #include <DallasTemperature.h>
 #include "cactus_io_DHT22.h"
-
+#include <math.h>
 // I2C addresses for devices
 #define HMC5883_ADDRESS 0x1E 
 #define BMP085_ADDRESS  0x77
@@ -87,9 +87,22 @@ uint8_t relays[9][3] = { {0, 0, 0},
                      {7, RELAY7_PIN, 0},
                      {8, RELAY8_PIN, 0} 
                      };
-uint8_t baro_state   = 0;
 
-uint8_t blinkm_state = 0;
+// Enable or disable devices
+#define compass 1
+#define baro    1
+#define blinkm  0
+
+// Variables
+uint8_t compass_state = 0;
+uint8_t baro_state    = 0;
+uint8_t blinkm_state  = 0;
+int16_t mx = 0;
+int16_t my = 0;
+int16_t mz = 0;
+int x = 0;
+   int y = 0;
+   int z = 0;
 
 int8_t flower_temp      = 0;
 int8_t grow_temp        = 0;
@@ -104,9 +117,10 @@ uint8_t current = 0;
 uint8_t ac_volt = 0;
 uint8_t ac_voltage = 0;
 uint8_t ac_current = 0;
-uint8_t ac_watts = 0;
+uint16_t ac_watts = 0;
 uint16_t ac_watts_offset = 50;
-
+uint16_t kwhr = 0;
+uint16_t kwhrs = 0;
 float realPower;       
 float apparentPower;   
 float powerFActor;     
@@ -127,7 +141,7 @@ long interval = 1000;
 long fast_interval = 100;
 long slow_interval = 5000;
 long two_seconds = 2000;
-uint8_t update_rate    = 0;
+uint16_t update_rate    = 0;
 //                           command  seconds
 uint16_t update_table[7][2] = { {0, 10}, // default 10 seconds
                                {82,  1},
@@ -162,7 +176,7 @@ EnergyMonitor emon1;                   // Create an instance
 OneWire oneWire(ONEWIREBUS_PIN); 
 
 // Pass our oneWire reference to Dallas Temperature. 
-DallasTemperature sensors(&oneWire);
+DallasTemperature ds18b_sensors(&oneWire);
 
 // Setup DHT22 sensor
 DHT22 dht(DHT22_PIN);
@@ -189,10 +203,7 @@ void setup() {
     Serial.print("NodeID: ");
     Serial.println(mesh.getNodeID());
     
-    // Now that this node has a unique ID, connect to the mesh
-    mesh.begin();
-
-    // Join the i2c bus
+  
     Wire.begin();
     
     scan_i2cbus();
@@ -201,19 +212,23 @@ void setup() {
     bmp085_init();
     
     // Start compass
-    //hmc5883_init();
+    hmc5883_init();
     
     // Start BlinkM
     blinkm_init();
             
     // Start ds18b20 temperature sensors
-    sensors.begin();
+    ds18b_sensors.begin();
     
     // Start DHT22 temperature and humidity sensor
     dht.begin();
     
     // Set node update rate
     update_rate = update_table[0][1] * 1000;
+      // Now that this node has a unique ID, connect to the mesh
+    mesh.begin();
+Serial.print("...joined the mesh...");
+    // Join the i2c bus
            
 }
 
@@ -227,22 +242,23 @@ void loop() {
     powerFActor     = emon1.powerFactor;   // extract Power Factor into Variable
     supplyVoltage   = emon1.Vrms;          // extract Vrms into Variable
     Irms            = emon1.Irms;          // extract Irms into Variable
-    
+    //emon1.print();
     ac_voltage = supplyVoltage; // integer
-    ac_current = Irms;          // integer
+    ac_current = Irms * 10;          // integer
     ac_watts   = (supplyVoltage * Irms) - ac_watts_offset; // integer
-    
+    kwhr = ac_watts /3600 * 1000;
+    kwhrs = (kwhrs + kwhr) / 1000;
     currentMillis = millis();    
     if(currentMillis - timer1 >= two_seconds) {   
-        sensors.requestTemperatures(); // Send the command to get temperature readings
-        watertank_temp  = ((sensors.getTempCByIndex(0)) * 1.8 + 32);
-        exhaust_temp     = ((sensors.getTempCByIndex(1)) * 1.8 + 32);
-        flowerlight_temp = ((sensors.getTempCByIndex(2)) * 1.8 + 32);
+        ds18b_sensors.requestTemperatures(); // Send the command to get temperature readings
+        watertank_temp  = ((ds18b_sensors.getTempCByIndex(0)) * 1.8 + 32);
+        exhaust_temp     = ((ds18b_sensors.getTempCByIndex(1)) * 1.8 + 32);
+        flowerlight_temp = ((ds18b_sensors.getTempCByIndex(2)) * 1.8 + 32);
    
         dht.readHumidity();
         dht.readTemperature();
- humidity  = dht.humidity;
-    outside_temp = dht.temperature_F;
+        humidity  = dht.humidity;
+        outside_temp = dht.temperature_F;
         relay1_state = relays[1][2];
         relay2_state = relays[2][2];
         relay3_state = relays[3][2];
@@ -255,7 +271,8 @@ void loop() {
         timer1 = millis();
      
     }
-    
+
+    update_compass();
    
         
     if (baro_state == 1) {
@@ -286,7 +303,7 @@ void loop() {
         //                                          -99s        -999s     -999s           -999s        -999s         -999s             
         sprintf(packet_one, "%u %i %i %i %i %i ", node_id, flower_temp, grow_temp, watertank_temp, exhaust_temp, outside_temp); 
         //                                                      -999s             999s           1s            1s             1s            1s           1s             1s             1s          1
-        sprintf(packet_two, "%i %u %i %i %i %i %i %i %i %i\n", flowerlight_temp, air_pressure, relay1_state, relay2_state, relay3_state, relay4_state, relay5_state, relay6_state, relay7_state, relay8_state );
+        sprintf(packet_two, "%i %u %i %i %i %u %u\n", flowerlight_temp, air_pressure, mx, my, mz, kwhr, kwhrs );
         mesh.write(&packet_one, 'S', sizeof(packet_one));
         mesh.write(&packet_two, 'S', sizeof(packet_two));
       

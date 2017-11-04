@@ -15,7 +15,7 @@
 #define RX_MESH_LED   4
 #define TX_MESH_LED   5
 #define DEBUG_LED     6
-#define RF24_CE       9
+#define RF24_CE       6
 #define RF24_CSN      10
 #define RF24_MISO     11
 #define RF24_MOSI     12
@@ -68,8 +68,8 @@ void setup() {
 
     // Setup OpenEnergyMonitor sensors
     // emon1.voltage(AC_VOLT_PIN, 54.26, 1.7); // Voltage: input pin, calibration, phase_shift
-    ct1.current(1, 110.22);  //150 66.22 Current: input pin, calibration. 
-    ct2.current(2, 114.22);  //150 66.22
+    ct1.current(1, 100.22);  //150 66.22 Current: input pin, calibration. 
+    ct2.current(2, 104.22);  //150 66.22
    
     // Start usb serial connections
     Serial.begin(9600);
@@ -86,6 +86,7 @@ void setup() {
                
     // Set node update rate
     update_rate = update_table[0][1] * 1000;
+    Serial.print("Update rate set to: "); Serial.println(update_rate);
     
 }
 
@@ -99,9 +100,13 @@ void loop() {
     double amps = irms1 + irms2;
     double watts = volts * amps;
     double int_amps = amps * 10; // ie: convert 3.2 to 32 and divide by 10 at receiving end to send decimal
-
+    double kilowatthour = (watts / 1000) /3600;
+    double kilowatthours = kilowatthours + kilowatthour;
+    
     uint16_t total_amps = int_amps;
     uint16_t total_watts = watts;
+    //uint16_t kwhr = kilowatthour * 1000;
+   // uint16_t kwhrs = kilowatthours * 1000;
     
     if (debug == 1) {
       Serial.print(irms1); Serial.print("  "); Serial.print(irms1 * 120); Serial.print("  "); Serial.print(irms2); Serial.print("  "); Serial.println(irms2 * 120);
@@ -136,8 +141,10 @@ void loop() {
         Serial.println(dat);
         }
         if (dat >= 82 && dat <= 87) {
-            update_rate = update_table[dat][1] * 1000;   
-            }
+          update_rate = update_table[dat-82][1] * 1000;
+          Serial.print("Received command: "); Serial.println(dat);
+          Serial.print("Update rate set to: "); Serial.println(update_rate);   
+        }
         else if (dat == 90) {
             digitalWrite(DEBUG_LED, HIGH);
             debug = 0;   

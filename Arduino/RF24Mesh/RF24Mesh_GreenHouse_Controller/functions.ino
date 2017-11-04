@@ -144,7 +144,7 @@ static void scan_i2cbus() {
             Serial.print(i, HEX);
             Serial.print(", ");
                 if (i == HMC5883_ADDRESS) {
-                    Serial.print("hmc4883");
+                    Serial.print("hmc5883");
                     }
                 else if (i == BMA180_ADDRESS) {
                     Serial.print("bma180");
